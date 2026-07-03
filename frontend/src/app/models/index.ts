@@ -128,3 +128,15 @@ export interface MovimientoReciente {
   fecha: string;
   fechaCreacion: string;
 }
+
+export interface Meta {
+  id: string;
+  hogarId: string;
+  nombre: string;
+  montoObjetivo: number;
+  montoActual: number;
+  fechaLimite: string;
+  cuotaMensual: number | null;
+  gastoId: string | null;
+  createdAt: string;
+}
