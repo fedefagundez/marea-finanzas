@@ -276,6 +276,7 @@ table.tx{width:100%; border-collapse:collapse; font-size:13.5px;}
 table.tx th{text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:.05em; color:var(--text-3); font-weight:700; padding:0 14px 10px;}
 table.tx td{padding:12px 14px; border-top:1px solid var(--border);}
 table.tx tr:hover td{background:var(--surface-2);}
+.card:has(table.tx){overflow-x:auto;}
 .tx-name{display:flex; align-items:center; gap:10px; font-weight:600;}
 .tx-icon{width:32px; height:32px; border-radius:9px; display:flex; align-items:center; justify-content:center; flex-shrink:0;}
 .amt-pos{color:var(--success-600); font-family:var(--font-mono); font-weight:600;}
@@ -401,14 +402,25 @@ footer{margin-top:80px; padding-top:24px; border-top:1px solid var(--border); fo
   .mobile-header .brand-name { font-size: 17px; }
   .hamburger { display: flex; }
   .rail {
-    position: static;
     display: none;
-    height: auto;
-    border-right: none; border-bottom: 1px solid var(--border);
+  }
+  .rail.abierto {
+    display: flex;
+    position: fixed;
+    top: 57px;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 99;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    border-right: none;
     padding: 8px 16px 16px;
     background: var(--surface);
   }
-  .rail.abierto { display: flex; }
+  .rail.abierto .rail-footer {
+    margin-top: auto;
+  }
   .desktop-brand { display: none; }
   .rail-nav {
     display: flex; flex-direction: column; gap: 2px;
@@ -448,7 +460,7 @@ footer{margin-top:80px; padding-top:24px; border-top:1px solid var(--border); fo
   .form-actions { display: flex; flex-direction: column; gap: 8px; width: 100%; }
   .auth-card { padding: 24px 20px; margin: 0 16px; }
   .auth-card h2 { font-size: 22px; }
-  .card:has(table.tx) { overflow-x: auto; padding: 0; }
+  .card:has(table.tx) { padding: 0; }
   table.tx { font-size: 12px; min-width: 100%; width: max-content; }
   table.tx th, table.tx td { padding: 8px 10px; white-space: nowrap; }
   table.tx td:last-child { white-space: normal; }

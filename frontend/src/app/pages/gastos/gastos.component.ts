@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, HostListener, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { GastoService } from '../../services/gasto.service';
@@ -93,32 +93,36 @@ import { toInputDate, validarDescripcion, validarMontoPositivo } from '../../cor
         <label style="font-size:11px; font-weight:600; color:var(--text-2);">Hasta</label>
         <app-date-picker [(ngModel)]="filtroHasta" name="filtroHasta" placeholder="dd/mm/aaaa" style="width:130px;"></app-date-picker>
       </div>
-      <div style="display:flex; flex-direction:column; gap:2px;">
-        <label style="font-size:11px; font-weight:600; color:var(--text-2);">Tipo</label>
-        <select [(ngModel)]="filtroTipo" name="filtroTipo"
-          style="min-height:40px; padding:10px 12px; font-size:14px; border:1.5px solid var(--border-strong); border-radius:var(--radius-sm); background:var(--surface); font-family:var(--font-body); color:var(--text-1); outline:none;">
-          <option value="">Todos</option>
-          <option value="PUNTUAL">Puntual</option>
-          <option value="RECURRENTE">Recurrente</option>
-          <option value="INDEFINIDO">Indefinido</option>
-        </select>
-      </div>
-      <div style="display:flex; flex-direction:column; gap:2px;">
-        <label style="font-size:11px; font-weight:600; color:var(--text-2);">Categoría</label>
-        <select [(ngModel)]="filtroCategoriaId" name="filtroCategoriaId"
-          style="min-height:40px; padding:10px 12px; font-size:14px; border:1.5px solid var(--border-strong); border-radius:var(--radius-sm); background:var(--surface); font-family:var(--font-body); color:var(--text-1); outline:none;">
-          <option value="">Todas</option>
-          <option *ngFor="let c of categorias" [value]="c.id">{{ c.icon }} {{ c.nombre }}</option>
-        </select>
-      </div>
-      <div style="display:flex; flex-direction:column; gap:2px;">
-        <label style="font-size:11px; font-weight:600; color:var(--text-2);">Tarjeta</label>
-        <select [(ngModel)]="filtroTarjetaId" name="filtroTarjetaId"
-          style="min-height:40px; padding:10px 12px; font-size:14px; border:1.5px solid var(--border-strong); border-radius:var(--radius-sm); background:var(--surface); font-family:var(--font-body); color:var(--text-1); outline:none;">
-          <option value="">Todas</option>
-          <option *ngFor="let t of tarjetas" [value]="t.id">{{ t.nombre }} ({{ t.ultimo4 }})</option>
-        </select>
-      </div>
+      <ng-container *ngIf="!isMobile || filtrosExtraAbierto">
+        <div style="display:flex; flex-direction:column; gap:2px;">
+          <label style="font-size:11px; font-weight:600; color:var(--text-2);">Tipo</label>
+          <select [(ngModel)]="filtroTipo" name="filtroTipo"
+            style="min-height:40px; padding:10px 12px; font-size:14px; border:1.5px solid var(--border-strong); border-radius:var(--radius-sm); background:var(--surface); font-family:var(--font-body); color:var(--text-1); outline:none;">
+            <option value="">Todos</option>
+            <option value="PUNTUAL">Puntual</option>
+            <option value="RECURRENTE">Recurrente</option>
+            <option value="INDEFINIDO">Indefinido</option>
+          </select>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:2px;">
+          <label style="font-size:11px; font-weight:600; color:var(--text-2);">Categoría</label>
+          <select [(ngModel)]="filtroCategoriaId" name="filtroCategoriaId"
+            style="min-height:40px; padding:10px 12px; font-size:14px; border:1.5px solid var(--border-strong); border-radius:var(--radius-sm); background:var(--surface); font-family:var(--font-body); color:var(--text-1); outline:none;">
+            <option value="">Todas</option>
+            <option *ngFor="let c of categorias" [value]="c.id">{{ c.icon }} {{ c.nombre }}</option>
+          </select>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:2px;">
+          <label style="font-size:11px; font-weight:600; color:var(--text-2);">Tarjeta</label>
+          <select [(ngModel)]="filtroTarjetaId" name="filtroTarjetaId"
+            style="min-height:40px; padding:10px 12px; font-size:14px; border:1.5px solid var(--border-strong); border-radius:var(--radius-sm); background:var(--surface); font-family:var(--font-body); color:var(--text-1); outline:none;">
+            <option value="">Todas</option>
+            <option *ngFor="let t of tarjetas" [value]="t.id">{{ t.nombre }} ({{ t.ultimo4 }})</option>
+          </select>
+        </div>
+      </ng-container>
+      <button *ngIf="isMobile && !filtrosExtraAbierto" type="button" class="btn btn-secondary btn-md" (click)="filtrosExtraAbierto = true" style="font-size:12px;">+ Más filtros</button>
+      <button *ngIf="isMobile && filtrosExtraAbierto" type="button" class="btn btn-secondary btn-md" (click)="filtrosExtraAbierto = false" style="font-size:12px;">− Menos filtros</button>
       <button type="button" class="btn btn-primary btn-md" (click)="aplicarFiltro()">Filtrar</button>
       <button *ngIf="filtroActivo" type="button" class="btn btn-secondary btn-md" (click)="limpiarFiltro()">Limpiar</button>
     </div>
@@ -191,6 +195,11 @@ export class GastosComponent implements OnInit {
   filtroTarjetaId = '';
   filtroActivo = false;
   filtroPreset = 'este-mes';
+  filtrosExtraAbierto = false;
+  isMobile = window.innerWidth <= 768;
+
+  @HostListener('window:resize')
+  onResize() { this.isMobile = window.innerWidth <= 768; }
   readonly presets = [
     { id: 'este-mes', label: 'Este mes' },
     { id: 'mes-anterior', label: 'Mes anterior' },
