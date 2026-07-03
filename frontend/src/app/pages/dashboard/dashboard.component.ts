@@ -4,13 +4,14 @@ import { Router, RouterLink } from '@angular/router';
 import { ReporteService } from '../../services/reporte.service';
 import { AuthService } from '../../services/auth.service';
 import { SelectComponent } from '../../components/select/select.component';
+import { EvolutionChartComponent } from '../../components/evolution-chart/evolution-chart.component';
 import { ArsCurrencyPipe } from '../../core/pipes/ars-currency.pipe';
-import { BalanceMes, Dashboard, MovimientoReciente, DistribucionGasto } from '../../models';
+import { BalanceMes, Dashboard, EvolucionItem, MovimientoReciente, DistribucionGasto } from '../../models';
 
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, RouterLink, SelectComponent, ArsCurrencyPipe],
+  imports: [CommonModule, RouterLink, SelectComponent, EvolutionChartComponent, ArsCurrencyPipe],
   template: `
     <div class="demo-topbar">
       <div>
@@ -99,6 +100,11 @@ import { BalanceMes, Dashboard, MovimientoReciente, DistribucionGasto } from '..
       </div>
     </div>
 
+    <div class="card" style="margin:20px 0;">
+      <div class="card-title">Evolución mensual</div>
+      <app-evolution-chart [data]="evolucionData" style="display:block; height:300px; margin-top:6px;"></app-evolution-chart>
+    </div>
+
     <div class="subhead">Movimientos recientes</div>
     <div *ngIf="movimientos.length === 0" class="no-hogar">
       <h3>Sin movimientos recientes</h3>
@@ -138,6 +144,7 @@ export class DashboardComponent implements OnInit {
   balanceMesAnterior: BalanceMes | null = null;
   movimientos: MovimientoReciente[] = [];
   distribucion: DistribucionGasto[] = [];
+  evolucionData: EvolucionItem[] = [];
 
   readonly donutColors = [
     'var(--primary-500)', 'var(--secondary-500)', 'var(--warning-500)',
@@ -177,6 +184,7 @@ export class DashboardComponent implements OnInit {
       this.cargarComparacionMesAnterior();
       this.cargarMovimientos();
       this.cargarDistribucion();
+      this.cargarEvolucion();
     }
   }
 
@@ -267,6 +275,14 @@ export class DashboardComponent implements OnInit {
     this.reporteService.distribucionGastos(this.hogarId).subscribe({
       next: (d) => this.distribucion = d,
       error: (err) => console.error('Error loading distribucion:', err),
+    });
+  }
+
+  cargarEvolucion() {
+    if (!this.hogarId) return;
+    this.reporteService.evolucionCompleta(this.hogarId, 6, 6).subscribe({
+      next: (res) => this.evolucionData = res.data,
+      error: (err) => console.error('Error loading evolucion completa:', err),
     });
   }
 

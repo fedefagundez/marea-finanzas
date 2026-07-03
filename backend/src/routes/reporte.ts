@@ -144,6 +144,52 @@ router.get('/hogar/:hogarId/proyeccion', authMiddleware, async (req: AuthRequest
   }
 });
 
+router.get('/hogar/:hogarId/evolucion-completa', authMiddleware, async (req: AuthRequest, res, next) => {
+  try {
+    await verificarMiembro(req.usuarioId!, req.params.hogarId);
+
+    const hogarId = req.params.hogarId;
+    const pasado = parseInt(req.query.pasado as string) || 6;
+    const futuro = parseInt(req.query.futuro as string) || 6;
+    const hoy = new Date();
+
+    const [ingresos, gastos] = await Promise.all([
+      prisma.ingreso.findMany({ where: { hogarId } }),
+      prisma.gasto.findMany({ where: { hogarId } }),
+    ]);
+
+    const data: { mes: string; label: string; ingresos: number; gastos: number; balance: number; tipo: 'REAL' | 'PROYECTADO' }[] = [];
+
+    for (let i = -pasado; i <= futuro; i++) {
+      const fecha = addMonths(hoy, i);
+      const inicio = startOfMonth(fecha);
+      const fin = endOfMonth(fecha);
+      const esFuturo = i > 0;
+
+      const { totalIngresos, totalGastos, balance } = calcularTotales(
+        ingresos,
+        gastos,
+        inicio,
+        fin,
+        { incluirPuntuales: !esFuturo }
+      );
+
+      data.push({
+        mes: format(fecha, 'yyyy-MM'),
+        label: format(fecha, 'MMM yyyy', { locale: es }),
+        ingresos: totalIngresos,
+        gastos: totalGastos,
+        balance,
+        tipo: esFuturo ? 'PROYECTADO' : 'REAL',
+      });
+    }
+
+    res.json({ data });
+  } catch (error) {
+    next(error);
+  }
+});
+
 router.get('/hogar/:hogarId/balance-mes', authMiddleware, async (req: AuthRequest, res, next) => {
   try {
     await verificarMiembro(req.usuarioId!, req.params.hogarId);
