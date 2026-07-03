@@ -1,0 +1,93 @@
+import { Router } from 'express';
+import { z } from 'zod';
+import { prisma } from '../lib/prisma.js';
+import { verificarMiembro } from '../lib/auth.js';
+import { AppError } from '../middlewares/error.js';
+import { authMiddleware, AuthRequest } from '../middlewares/auth.js';
+
+const router = Router();
+
+const tarjetaSchema = z.object({
+  hogarId: z.string().uuid(),
+  nombre: z.string().min(1).max(50),
+  ultimo4: z.string().length(4).regex(/^\d+$/),
+});
+
+const updateTarjetaSchema = tarjetaSchema.omit({ hogarId: true }).partial();
+
+router.post('/', authMiddleware, async (req: AuthRequest, res, next) => {
+  try {
+    const data = tarjetaSchema.parse(req.body);
+    await verificarMiembro(req.usuarioId!, data.hogarId);
+
+    const tarjeta = await prisma.tarjetaCredito.create({
+      data: {
+        nombre: data.nombre,
+        ultimo4: data.ultimo4,
+        hogarId: data.hogarId,
+      },
+    });
+
+    res.status(201).json(tarjeta);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.get('/hogar/:hogarId', authMiddleware, async (req: AuthRequest, res, next) => {
+  try {
+    await verificarMiembro(req.usuarioId!, req.params.hogarId);
+
+    const tarjetas = await prisma.tarjetaCredito.findMany({
+      where: { hogarId: req.params.hogarId },
+      orderBy: { nombre: 'asc' },
+    });
+
+    res.json(tarjetas);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.put('/:id', authMiddleware, async (req: AuthRequest, res, next) => {
+  try {
+    const tarjeta = await prisma.tarjetaCredito.findUnique({ where: { id: req.params.id } });
+
+    if (!tarjeta) {
+      throw new AppError(404, 'Tarjeta no encontrada');
+    }
+
+    await verificarMiembro(req.usuarioId!, tarjeta.hogarId);
+
+    const data = updateTarjetaSchema.parse(req.body);
+
+    const actualizada = await prisma.tarjetaCredito.update({
+      where: { id: req.params.id },
+      data,
+    });
+
+    res.json(actualizada);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.delete('/:id', authMiddleware, async (req: AuthRequest, res, next) => {
+  try {
+    const tarjeta = await prisma.tarjetaCredito.findUnique({ where: { id: req.params.id } });
+
+    if (!tarjeta) {
+      throw new AppError(404, 'Tarjeta no encontrada');
+    }
+
+    await verificarMiembro(req.usuarioId!, tarjeta.hogarId);
+
+    await prisma.tarjetaCredito.delete({ where: { id: req.params.id } });
+
+    res.json({ mensaje: 'Tarjeta eliminada' });
+  } catch (error) {
+    next(error);
+  }
+});
+
+export default router;

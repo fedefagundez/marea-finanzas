@@ -1,0 +1,102 @@
+export interface Usuario {
+  id: string;
+  username: string;
+  email: string;
+  createdAt: string;
+}
+
+export interface AuthResponse {
+  token: string;
+  refreshToken: string;
+  usuario: Usuario;
+}
+
+export interface Hogar {
+  id: string;
+  nombre: string;
+  createdAt: string;
+  tokenInvitacion?: string;
+  miembros?: Miembro[];
+  tarjetas?: TarjetaResumen[];
+}
+
+export interface Miembro {
+  id: string;
+  rol: 'ADMIN' | 'MIEMBRO';
+  joinedAt?: string;
+  usuario: Pick<Usuario, 'id' | 'username'> & Partial<Pick<Usuario, 'email'>>;
+}
+
+export interface TarjetaCredito {
+  id: string;
+  nombre: string;
+  ultimo4: string;
+  hogarId: string;
+}
+
+export interface TarjetaResumen {
+  id: string;
+  nombre: string;
+  ultimo4: string;
+}
+
+export interface Ingreso {
+  id: string;
+  descripcion: string;
+  monto: number;
+  tipo: 'RECURRENTE' | 'PUNTUAL' | 'INDEFINIDO';
+  fechaInicio?: string;
+  fechaFin?: string;
+  hogarId: string;
+  usuarioId: string;
+  createdAt: string;
+}
+
+export interface Gasto {
+  id: string;
+  descripcion: string;
+  monto: number;
+  tipo: 'RECURRENTE' | 'PUNTUAL' | 'INDEFINIDO';
+  fechaInicio?: string;
+  cuotasTotales?: number;
+  cuotasPagadas: number;
+  tarjetaId?: string;
+  tarjeta?: TarjetaResumen;
+  hogarId: string;
+  usuarioId: string;
+  createdAt: string;
+}
+
+export interface Dashboard {
+  mes: string;
+  totalIngresos: number;
+  totalGastos: number;
+  balance: number;
+}
+
+export interface Evolucion {
+  mes: string;
+  label: string;
+  ingresos: number;
+  gastos: number;
+  balance: number;
+}
+
+export interface Proyeccion extends Evolucion {}
+
+export interface BalanceMes {
+  mes: string;
+  totalIngresos: number;
+  totalGastos: number;
+  balance: number;
+  tipo: 'REAL' | 'PROYECTADO';
+}
+
+export interface MovimientoReciente {
+  id: string;
+  tipo: 'INGRESO' | 'GASTO';
+  descripcion: string;
+  monto: number;
+  fecha: string;
+  fechaCreacion: string;
+}

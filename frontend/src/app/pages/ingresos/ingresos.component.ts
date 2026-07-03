@@ -1,0 +1,171 @@
+import { Component, OnInit, inject } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { IngresoService } from '../../services/ingreso.service';
+import { ToastService } from '../../services/toast.service';
+import { ConfirmService } from '../../services/confirm.service';
+import { DatePickerComponent } from '../../components/date-picker/date-picker.component';
+import { Ingreso } from '../../models';
+import { toInputDate, validarDescripcion, validarMontoPositivo } from '../../core/utils/form-utils';
+
+@Component({
+  selector: 'app-ingresos',
+  standalone: true,
+  imports: [CommonModule, FormsModule, DatePickerComponent],
+  template: `
+    <div class="demo-topbar">
+      <div>
+        <div class="eyebrow">Movimientos</div>
+        <div class="sec-title">Ingresos</div>
+      </div>
+    </div>
+
+    <form *ngIf="hogarId" (ngSubmit)="guardar()" class="card" style="margin-bottom:20px;">
+      <div class="card-title">{{ editando ? 'Editar ingreso' : 'Nuevo ingreso' }}</div>
+      <div class="fields-grid" style="margin-top:12px;">
+        <div class="field">
+          <label>Descripción</label>
+          <input type="text" [(ngModel)]="form.descripcion" name="descripcion" placeholder="Ej. Salario" required maxlength="100" />
+        </div>
+        <div class="field">
+          <label>Monto</label>
+          <input type="number" [(ngModel)]="form.monto" name="monto" placeholder="0.00" required min="0.01" step="0.01" />
+        </div>
+        <div class="field">
+          <label>Tipo</label>
+          <select [(ngModel)]="form.tipo" name="tipo">
+            <option value="PUNTUAL">Puntual</option>
+            <option value="RECURRENTE">Recurrente</option>
+            <option value="INDEFINIDO">Indefinido</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Fecha inicio <span *ngIf="form.tipo === 'INDEFINIDO'" style="font-weight:400;color:var(--text-3);">(opcional)</span></label>
+          <app-date-picker [(ngModel)]="form.fechaInicio" name="fechaInicio" [required]="form.tipo !== 'INDEFINIDO'" placeholder="dd/mm/yyyy"></app-date-picker>
+        </div>
+        <div class="field" *ngIf="form.tipo === 'RECURRENTE' || form.tipo === 'INDEFINIDO'">
+          <label>Fecha fin <span *ngIf="form.tipo === 'INDEFINIDO'" style="font-weight:400;color:var(--text-3);">(opcional)</span></label>
+          <app-date-picker [(ngModel)]="form.fechaFin" name="fechaFin" placeholder="dd/mm/yyyy"></app-date-picker>
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary btn-md">{{ editando ? 'Actualizar' : '+ Agregar' }}</button>
+          <button *ngIf="editando" type="button" class="btn btn-secondary btn-md" (click)="cancelar()">Cancelar</button>
+        </div>
+      </div>
+    </form>
+
+    <div *ngIf="hogarId && !ingresos.length" class="no-hogar">
+      <h3>Todavía no cargaste ingresos</h3>
+      <p>Registrá tu primer ingreso para empezar a ver tu balance.</p>
+    </div>
+
+    <div *ngIf="ingresos.length" class="card" style="padding:6px 4px;">
+      <table class="tx">
+        <tr><th>Descripción</th><th>Monto</th><th>Tipo</th><th>Fecha</th><th style="text-align:right;">Acciones</th></tr>
+        <tr *ngFor="let i of ingresos">
+          <td data-label="Descripción"><div class="tx-name"><span class="tx-icon" style="background:var(--success-100); color:var(--success-700);">$</span>{{ i.descripcion || '-' }}</div></td>
+          <td data-label="Monto" class="amt-pos">{{ (i.monto | currency:'ARS':'symbol':'1.0-0':'es-AR') || '-' }}</td>
+          <td data-label="Tipo"><span class="badge"
+            [class.badge-success]="i.tipo === 'PUNTUAL'"
+            [class.badge-warning]="i.tipo === 'RECURRENTE'"
+            [class.badge-neutral]="i.tipo === 'INDEFINIDO'">{{ i.tipo ? (i.tipo === 'INDEFINIDO' ? 'Indefinido' : i.tipo) : '-' }}</span></td>
+          <td data-label="Fecha">{{ i.fechaInicio ? (i.fechaInicio | date:'dd/MM/yyyy':'UTC':'es-AR') : 'Indefinido' }}</td>
+          <td data-label="Acciones" style="text-align:right;">
+            <button type="button" class="btn btn-ghost btn-sm" (click)="editar(i)">Editar</button>
+            <button type="button" class="btn btn-danger btn-sm" (click)="eliminar(i.id)">Eliminar</button>
+          </td>
+        </tr>
+      </table>
+    </div>
+  `
+})
+export class IngresosComponent implements OnInit {
+  private ingresoService = inject(IngresoService);
+  private toast = inject(ToastService);
+  private confirmService = inject(ConfirmService);
+
+  hogarId = '';
+  ingresos: Ingreso[] = [];
+  editando = false;
+  editId = '';
+
+  form: { descripcion: string; monto: number; tipo: 'PUNTUAL' | 'RECURRENTE' | 'INDEFINIDO'; fechaInicio: string; fechaFin: string } = { descripcion: '', monto: 0, tipo: 'PUNTUAL', fechaInicio: '', fechaFin: '' };
+
+  ngOnInit() {
+    this.hogarId = localStorage.getItem('hogarId') || '';
+    if (this.hogarId) this.cargarIngresos();
+  }
+
+  cargarIngresos() {
+    if (!this.hogarId) return;
+    this.ingresoService.listarPorHogar(this.hogarId).subscribe(i => {
+      console.log('[Ingresos] datos recibidos:', i);
+      this.ingresos = i;
+    });
+  }
+
+  guardar() {
+    const desc = validarDescripcion(this.form.descripcion);
+    if (!desc.ok) { this.toast.show(desc.mensaje!, 'error'); return; }
+
+    const monto = validarMontoPositivo(this.form.monto);
+    if (!monto.ok) { this.toast.show(monto.mensaje!, 'error'); return; }
+
+    if (this.form.tipo !== 'INDEFINIDO' && !this.form.fechaInicio) {
+      this.toast.show('La fecha de inicio es obligatoria para este tipo', 'error');
+      return;
+    }
+    if (this.form.fechaInicio && this.form.fechaFin && this.form.fechaFin < this.form.fechaInicio) {
+      this.toast.show('La fecha de fin debe ser mayor o igual a la de inicio', 'error');
+      return;
+    }
+
+    const payload = {
+      descripcion: this.form.descripcion.trim(),
+      monto: this.form.monto,
+      tipo: this.form.tipo,
+      fechaInicio: this.form.fechaInicio || undefined,
+      fechaFin: this.form.fechaFin || undefined
+    };
+    if (this.editando) {
+      this.ingresoService.actualizar(this.editId, payload).subscribe({
+        next: () => { this.cancelar(); this.cargarIngresos(); this.toast.show('Ingreso actualizado', 'success'); },
+        error: (err) => this.toast.showApiError(err, 'Error al actualizar')
+      });
+    } else {
+      this.ingresoService.crear({ hogarId: this.hogarId, ...payload }).subscribe({
+        next: () => { this.resetForm(); this.cargarIngresos(); this.toast.show('Ingreso creado', 'success'); },
+        error: (err) => this.toast.showApiError(err, 'Error al crear')
+      });
+    }
+  }
+
+  editar(i: Ingreso) {
+    this.editando = true;
+    this.editId = i.id;
+    this.form = {
+      descripcion: i.descripcion,
+      monto: i.monto,
+      tipo: i.tipo,
+      fechaInicio: toInputDate(i.fechaInicio),
+      fechaFin: toInputDate(i.fechaFin)
+    };
+  }
+
+  cancelar() {
+    this.editando = false;
+    this.editId = '';
+    this.resetForm();
+  }
+
+  resetForm() {
+    this.form = { descripcion: '', monto: 0, tipo: 'PUNTUAL', fechaInicio: '', fechaFin: '' };
+  }
+
+  async eliminar(id: string) {
+    const ok = await this.confirmService.confirm('¿Eliminar este ingreso?');
+    if (ok) {
+      this.ingresoService.eliminar(id).subscribe(() => { this.cargarIngresos(); this.toast.show('Ingreso eliminado', 'success'); });
+    }
+  }
+}

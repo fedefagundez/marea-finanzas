@@ -1,0 +1,26 @@
+import express from 'express';
+import cors from 'cors';
+import { config } from './config/index.js';
+import { errorMiddleware } from './middlewares/error.js';
+import authRoutes from './routes/auth.js';
+import hogarRoutes from './routes/hogar.js';
+import ingresoRoutes from './routes/ingreso.js';
+import gastoRoutes from './routes/gasto.js';
+import tarjetaRoutes from './routes/tarjeta.js';
+import reporteRoutes from './routes/reporte.js';
+
+const app = express();
+
+app.use(cors({ origin: config.frontendUrl }));
+app.use(express.json());
+
+app.use('/api/auth', authRoutes);
+app.use('/api/hogares', hogarRoutes);
+app.use('/api/ingresos', ingresoRoutes);
+app.use('/api/gastos', gastoRoutes);
+app.use('/api/tarjetas', tarjetaRoutes);
+app.use('/api/reportes', reporteRoutes);
+
+app.use(errorMiddleware);
+
+export default app;

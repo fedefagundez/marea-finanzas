@@ -1,0 +1,787 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Marea — Sistema de diseño financiero del hogar</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+
+/* ========================================================
+   MAREA — DESIGN TOKENS
+   ======================================================== */
+:root{
+  /* --- Primary: turquesa (identidad de marca) --- */
+  --primary-50:#ECFEFF; --primary-100:#CFFAFE; --primary-200:#A5F3FC;
+  --primary-300:#67E8F9; --primary-400:#22D3EE; --primary-500:#06B6D4;
+  --primary-600:#0891B2; --primary-700:#0E7490; --primary-800:#155E75; --primary-900:#164E63;
+
+  /* --- Secondary: índigo profundo (contraste / jerarquía) --- */
+  --secondary-50:#EEF2FF; --secondary-100:#E0E7FF; --secondary-300:#A5B4FC;
+  --secondary-500:#6366F1; --secondary-600:#4F46E5; --secondary-700:#4338CA; --secondary-900:#312E81;
+
+  /* --- Semánticos --- */
+  --success-100:#D1FAE5; --success-500:#10B981; --success-600:#059669; --success-700:#047857;
+  --danger-100:#FFE4E6; --danger-500:#F43F5E; --danger-600:#E11D48; --danger-700:#BE123C;
+  --warning-100:#FEF3C7; --warning-500:#F59E0B; --warning-600:#D97706; --warning-700:#B45309;
+
+  /* --- Neutros (fríos, con leve tinte cian) --- */
+  --n-50:#F5FAFB; --n-100:#EAF3F5; --n-200:#DCEEF1; --n-300:#C3D9DE;
+  --n-400:#94AEB5; --n-500:#64828A; --n-600:#4F717A; --n-700:#38545C;
+  --n-800:#1F3940; --n-900:#0B2530;
+
+  /* --- Tokens semánticos (modo claro) --- */
+  --bg:var(--n-50);
+  --surface:#FFFFFF;
+  --surface-2:var(--n-100);
+  --border:var(--n-200);
+  --border-strong:var(--n-300);
+  --text-1:var(--n-900);
+  --text-2:var(--n-600);
+  --text-3:var(--n-500);
+  --accent:var(--primary-500);
+  --accent-strong:var(--primary-700);
+  --accent-soft:var(--primary-50);
+  --ring: 0 0 0 4px rgba(6,182,212,.18);
+  --shadow-sm: 0 1px 2px rgba(11,37,48,.06);
+  --shadow-md: 0 6px 16px -4px rgba(11,37,48,.12);
+  --shadow-lg: 0 20px 40px -12px rgba(11,37,48,.22);
+  --glow: 0 8px 24px -6px rgba(6,182,212,.45);
+
+  --font-display:'Sora', sans-serif;
+  --font-body:'Inter', sans-serif;
+  --font-mono:'JetBrains Mono', monospace;
+
+  --radius-sm:8px; --radius-md:12px; --radius-lg:18px; --radius-xl:26px; --radius-pill:999px;
+}
+
+[data-theme="dark"]{
+  --bg:#071A20;
+  --surface:#0D242B;
+  --surface-2:#122E36;
+  --border:#1C3F48;
+  --border-strong:#26525C;
+  --text-1:#EAF7FA;
+  --text-2:#9BC2CB;
+  --text-3:#6E96A0;
+  --accent:var(--primary-400);
+  --accent-strong:var(--primary-300);
+  --accent-soft:#103139;
+  --shadow-sm: 0 1px 2px rgba(0,0,0,.3);
+  --shadow-md: 0 6px 16px -4px rgba(0,0,0,.45);
+  --shadow-lg: 0 24px 48px -12px rgba(0,0,0,.55);
+  --glow: 0 8px 28px -4px rgba(34,211,238,.35);
+}
+
+*{box-sizing:border-box; margin:0; padding:0;}
+html{scroll-behavior:smooth;}
+body{
+  background:var(--bg);
+  color:var(--text-1);
+  font-family:var(--font-body);
+  font-size:15px;
+  line-height:1.5;
+  transition:background .25s ease, color .25s ease;
+}
+::selection{background:var(--primary-200); color:var(--n-900);}
+
+.tabular{font-variant-numeric:tabular-nums; font-feature-settings:"tnum";}
+
+/* ========== LAYOUT ========== */
+.shell{display:grid; grid-template-columns:248px 1fr; min-height:100vh;}
+.rail{
+  position:sticky; top:0; height:100vh; overflow-y:auto;
+  border-right:1px solid var(--border);
+  background:var(--surface);
+  padding:24px 16px;
+}
+.main{padding:32px 40px 100px; max-width:1180px;}
+@media (max-width: 900px){
+  .shell{grid-template-columns:1fr;}
+  .rail{position:relative; height:auto;}
+}
+
+/* Brand mark */
+.brand{display:flex; align-items:center; gap:10px; padding:4px 8px 22px;}
+.brand svg{flex-shrink:0;}
+.brand-name{font-family:var(--font-display); font-weight:700; font-size:19px; letter-spacing:-.01em;}
+.brand-tag{font-size:11px; color:var(--text-3); margin-top:-2px;}
+
+.rail-nav{display:flex; flex-direction:column; gap:2px; margin-top:6px;}
+.rail-link{
+  display:flex; align-items:center; gap:10px;
+  padding:9px 12px; border-radius:var(--radius-sm);
+  color:var(--text-2); text-decoration:none; font-size:13.5px; font-weight:500;
+  border-left:2px solid transparent;
+  transition:background .15s ease, color .15s ease;
+}
+.rail-link:hover{background:var(--surface-2); color:var(--text-1);}
+.rail-link.active{
+  background:var(--accent-soft); color:var(--accent-strong);
+  border-left:2px solid var(--accent);
+  font-weight:600;
+}
+.rail-link svg{opacity:.85; flex-shrink:0;}
+
+.rail-toggle{
+  margin-top:20px; display:flex; align-items:center; justify-content:space-between;
+  padding:10px 12px; border-radius:var(--radius-sm); background:var(--surface-2);
+  font-size:12.5px; color:var(--text-2); font-weight:500;
+}
+.switch{
+  width:38px; height:22px; border-radius:999px; background:var(--n-300);
+  position:relative; cursor:pointer; border:none; flex-shrink:0;
+  transition:background .2s ease;
+}
+.switch::after{
+  content:''; position:absolute; top:2px; left:2px; width:18px; height:18px;
+  border-radius:50%; background:#fff; transition:transform .2s ease; box-shadow:0 1px 3px rgba(0,0,0,.3);
+}
+[data-theme="dark"] .switch{background:var(--primary-600);}
+[data-theme="dark"] .switch::after{transform:translateX(16px);}
+
+/* ========== SECTION SCAFFOLDING ========== */
+section{padding-top:64px; scroll-margin-top:24px;}
+section:first-of-type{padding-top:0;}
+.eyebrow{
+  font-size:11.5px; font-weight:700; letter-spacing:.08em; text-transform:uppercase;
+  color:var(--accent-strong); margin-bottom:8px;
+}
+.sec-title{font-family:var(--font-display); font-size:28px; font-weight:700; letter-spacing:-.01em; margin-bottom:8px;}
+.sec-desc{color:var(--text-2); font-size:14.5px; max-width:640px; margin-bottom:32px;}
+.subhead{font-family:var(--font-display); font-size:15px; font-weight:600; margin:28px 0 14px; color:var(--text-1);}
+.subhead:first-of-type{margin-top:0;}
+
+/* ========== HERO ========== */
+.hero{
+  position:relative; overflow:hidden; border-radius:var(--radius-xl);
+  background:linear-gradient(135deg, var(--primary-700), var(--primary-500) 55%, var(--secondary-600));
+  padding:56px 48px; color:#fff; margin-bottom:8px;
+}
+.hero-wave{position:absolute; left:0; right:0; bottom:-2px; opacity:.5;}
+.hero-eyebrow{font-size:12px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; opacity:.85; margin-bottom:14px;}
+.hero h1{font-family:var(--font-display); font-size:42px; font-weight:800; letter-spacing:-.02em; max-width:640px; line-height:1.1;}
+.hero p{margin-top:16px; font-size:15.5px; max-width:520px; opacity:.92; position:relative; z-index:2;}
+
+/* ========== PALETTE ========== */
+.ramp-group{margin-bottom:22px;}
+.ramp-label{display:flex; align-items:baseline; justify-content:space-between; margin-bottom:8px;}
+.ramp-name{font-weight:600; font-size:13.5px;}
+.ramp-role{font-size:12px; color:var(--text-3);}
+.ramp{display:grid; grid-template-columns:repeat(9,1fr); border-radius:var(--radius-md); overflow:hidden; box-shadow:var(--shadow-sm);}
+.swatch{height:64px; display:flex; align-items:flex-end; padding:6px 8px; font-family:var(--font-mono); font-size:10px;}
+.swatch b{display:block; font-size:9px; opacity:.75; font-weight:600;}
+
+/* ========== TYPE ========== */
+.type-row{display:flex; align-items:baseline; gap:20px; padding:16px 0; border-bottom:1px solid var(--border);}
+.type-row:last-child{border-bottom:none;}
+.type-meta{width:150px; flex-shrink:0; font-size:12px; color:var(--text-3); font-family:var(--font-mono);}
+.type-sample{font-family:var(--font-display); color:var(--text-1);}
+.type-body-sample{font-family:var(--font-body); color:var(--text-1);}
+.amount-sample{font-family:var(--font-display); font-variant-numeric:tabular-nums;}
+
+/* ========== BUTTONS ========== */
+.btn{
+  font-family:var(--font-body); font-weight:600; border:none; cursor:pointer;
+  display:inline-flex; align-items:center; justify-content:center; gap:8px;
+  border-radius:var(--radius-md); transition:transform .12s ease, box-shadow .15s ease, background .15s ease, opacity .15s ease;
+  white-space:nowrap;
+}
+.btn:active{transform:scale(.97);}
+.btn-lg{padding:14px 26px; font-size:15px;}
+.btn-md{padding:10px 20px; font-size:13.5px;}
+.btn-sm{padding:7px 14px; font-size:12.5px;}
+.btn-primary{background:linear-gradient(135deg, var(--primary-500), var(--primary-600)); color:#fff; box-shadow:var(--shadow-sm);}
+.btn-primary:hover{box-shadow:var(--glow);}
+.btn-secondary{background:var(--surface); color:var(--text-1); border:1.5px solid var(--border-strong);}
+.btn-secondary:hover{border-color:var(--accent); color:var(--accent-strong);}
+.btn-ghost{background:transparent; color:var(--accent-strong);}
+.btn-ghost:hover{background:var(--accent-soft);}
+.btn-danger{background:var(--danger-500); color:#fff;}
+.btn-danger:hover{background:var(--danger-600);}
+.btn-disabled{background:var(--n-200); color:var(--text-3); cursor:not-allowed; opacity:.7;}
+.btn-disabled:active{transform:none;}
+.btn-row{display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:16px;}
+
+/* ========== FORM FIELDS ========== */
+.field{display:flex; flex-direction:column; gap:6px; width:260px;}
+.field label{font-size:12.5px; font-weight:600; color:var(--text-2);}
+.field input, .field select{
+  font-family:var(--font-body); font-size:14px; color:var(--text-1);
+  background:var(--surface); border:1.5px solid var(--border-strong);
+  border-radius:var(--radius-sm); padding:10px 12px; outline:none;
+  transition:border-color .15s ease, box-shadow .15s ease;
+}
+.field input:hover, .field select:hover{border-color:var(--n-400);}
+.field input:focus, .field select:focus{border-color:var(--accent); box-shadow:var(--ring);}
+.field .help{font-size:11.5px; color:var(--text-3);}
+.field.error input{border-color:var(--danger-500);}
+.field.error .help{color:var(--danger-600);}
+.field.disabled input{background:var(--surface-2); color:var(--text-3); cursor:not-allowed;}
+.amount-field{position:relative;}
+.amount-field .prefix{
+  position:absolute; left:12px; top:38px; color:var(--text-3); font-family:var(--font-mono); font-size:14px; pointer-events:none;
+}
+.amount-field input{padding-left:28px; font-family:var(--font-mono); font-variant-numeric:tabular-nums;}
+.fields-grid{display:flex; gap:20px; flex-wrap:wrap; margin-bottom:8px;}
+
+.check-row{display:flex; align-items:center; gap:10px; margin-bottom:14px;}
+.chk, .rdo{
+  width:20px; height:20px; border:1.5px solid var(--border-strong); flex-shrink:0; cursor:pointer;
+  appearance:none; background:var(--surface); position:relative; transition:all .15s ease;
+}
+.chk{border-radius:6px;}
+.rdo{border-radius:50%;}
+.chk:checked, .rdo:checked{background:var(--accent); border-color:var(--accent);}
+.chk:checked::after{content:'✓'; position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:#fff; font-size:13px; font-weight:700;}
+.rdo:checked::after{content:''; position:absolute; inset:5px; border-radius:50%; background:#fff;}
+.check-row label{font-size:13.5px; color:var(--text-1);}
+.toggle{width:42px; height:24px; border-radius:999px; background:var(--n-300); border:none; cursor:pointer; position:relative; flex-shrink:0;}
+.toggle::after{content:''; position:absolute; top:3px; left:3px; width:18px; height:18px; border-radius:50%; background:#fff; transition:transform .2s ease;}
+.toggle.on{background:var(--accent);}
+.toggle.on::after{transform:translateX(18px);}
+
+/* ========== CARDS / BADGES ========== */
+.grid-3{display:grid; grid-template-columns:repeat(3,1fr); gap:18px;}
+.grid-2{display:grid; grid-template-columns:repeat(2,1fr); gap:18px;}
+@media (max-width:800px){.grid-3,.grid-2{grid-template-columns:1fr;}}
+
+.card{background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-lg); padding:22px; box-shadow:var(--shadow-sm);}
+.card-title{font-size:12.5px; color:var(--text-2); font-weight:600; margin-bottom:6px;}
+
+.balance-card{
+  position:relative; overflow:hidden; color:#fff;
+  background:linear-gradient(140deg, var(--primary-700), var(--primary-500));
+  border:none;
+}
+.balance-card .wave-bg{position:absolute; bottom:-10px; left:0; right:0; opacity:.35;}
+.balance-card .card-title{color:rgba(255,255,255,.8);}
+.balance-amount{font-family:var(--font-display); font-size:38px; font-weight:800; letter-spacing:-.02em; position:relative; z-index:2;}
+.balance-sub{display:flex; gap:16px; margin-top:14px; position:relative; z-index:2;}
+.balance-chip{font-size:12px; background:rgba(255,255,255,.16); padding:5px 10px; border-radius:999px; font-weight:600; display:flex; align-items:center; gap:5px;}
+
+.category-card{display:flex; flex-direction:column; gap:10px;}
+.cat-top{display:flex; align-items:center; justify-content:space-between;}
+.cat-icon{width:36px; height:36px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:16px;}
+.cat-amount{font-family:var(--font-mono); font-weight:600; font-size:16px;}
+.bar-track{height:7px; background:var(--surface-2); border-radius:999px; overflow:hidden;}
+.bar-fill{height:100%; border-radius:999px; background:var(--accent);}
+
+.goal-card{display:flex; align-items:center; gap:18px;}
+.ring{width:78px; height:78px; border-radius:50%; flex-shrink:0; display:flex; align-items:center; justify-content:center; position:relative;}
+.ring span{font-family:var(--font-display); font-weight:700; font-size:15px;}
+
+.badge{display:inline-flex; align-items:center; gap:5px; font-size:11.5px; font-weight:700; padding:4px 10px; border-radius:999px;}
+.badge-success{background:var(--success-100); color:var(--success-700);}
+.badge-warning{background:var(--warning-100); color:var(--warning-700);}
+.badge-danger{background:var(--danger-100); color:var(--danger-700);}
+.badge-neutral{background:var(--surface-2); color:var(--text-2);}
+.badge-dot{width:6px; height:6px; border-radius:50%; background:currentColor;}
+
+/* ========== TABLE ========== */
+table.tx{width:100%; border-collapse:collapse; font-size:13.5px;}
+table.tx th{text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:.05em; color:var(--text-3); font-weight:700; padding:0 14px 10px;}
+table.tx td{padding:12px 14px; border-top:1px solid var(--border);}
+table.tx tr:hover td{background:var(--surface-2);}
+.tx-name{display:flex; align-items:center; gap:10px; font-weight:600;}
+.tx-icon{width:32px; height:32px; border-radius:9px; display:flex; align-items:center; justify-content:center; flex-shrink:0;}
+.amt-pos{color:var(--success-600); font-family:var(--font-mono); font-weight:600;}
+.amt-neg{color:var(--danger-600); font-family:var(--font-mono); font-weight:600;}
+
+/* ========== DASHBOARD DEMO ========== */
+.demo-wrap{border-radius:var(--radius-xl); overflow:hidden; box-shadow:var(--shadow-lg); border:1px solid var(--border);}
+.demo{display:grid; grid-template-columns:220px 1fr; background:var(--bg); min-height:560px;}
+.demo-side{background:var(--surface); border-right:1px solid var(--border); padding:20px 14px;}
+.demo-main{padding:26px 30px;}
+.demo-topbar{display:flex; align-items:center; justify-content:space-between; margin-bottom:24px;}
+.demo-search{display:flex; align-items:center; gap:8px; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-pill); padding:8px 16px; font-size:13px; color:var(--text-3); width:240px;}
+.demo-user{display:flex; align-items:center; gap:10px;}
+.avatar{width:34px; height:34px; border-radius:50%; background:var(--secondary-500); color:#fff; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; font-family:var(--font-display);}
+@media (max-width:800px){.demo{grid-template-columns:1fr;} .demo-side{display:none;}}
+
+.stat-row{display:grid; grid-template-columns:1.3fr 1fr 1fr; gap:16px; margin-bottom:20px;}
+.mini-stat{background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-lg); padding:16px 18px;}
+.mini-stat .lbl{font-size:12px; color:var(--text-2); font-weight:600; margin-bottom:6px;}
+.mini-stat .val{font-family:var(--font-display); font-size:22px; font-weight:700;}
+.trend{display:flex; align-items:center; gap:5px; font-size:11.5px; font-weight:700; margin-top:6px;}
+.trend.up{color:var(--success-600);} .trend.down{color:var(--danger-600);}
+
+.donut-legend{display:flex; flex-direction:column; gap:9px; margin-top:16px;}
+.legend-row{display:flex; align-items:center; gap:9px; font-size:12.5px;}
+.legend-dot{width:9px; height:9px; border-radius:3px; flex-shrink:0;}
+.legend-row span:last-child{margin-left:auto; font-family:var(--font-mono); font-weight:600; color:var(--text-2);}
+
+footer{margin-top:80px; padding-top:24px; border-top:1px solid var(--border); font-size:12.5px; color:var(--text-3); display:flex; justify-content:space-between;}
+</style>
+</head>
+<body data-theme="light">
+
+<div class="shell">
+
+  <!-- ========== SIDEBAR / NAV (también sirve como demo de componente de navegación) ========== -->
+  <nav class="rail">
+    <div class="brand">
+      <svg width="30" height="30" viewBox="0 0 30 30" fill="none">
+        <circle cx="15" cy="15" r="15" fill="#06B6D4"/>
+        <path d="M4 17c2.5-3 4.5 3 7 0s4.5-3 7 0 4.5 3 7 0" stroke="#fff" stroke-width="2" stroke-linecap="round" fill="none"/>
+        <path d="M4 21c2.5-3 4.5 3 7 0s4.5-3 7 0 4.5 3 7 0" stroke="#fff" stroke-width="1.4" stroke-linecap="round" fill="none" opacity=".55"/>
+      </svg>
+      <div>
+        <div class="brand-name">Marea</div>
+        <div class="brand-tag">Sistema de diseño</div>
+      </div>
+    </div>
+
+    <div class="rail-nav">
+      <a class="rail-link active" href="#paleta"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/></svg> Paleta</a>
+      <a class="rail-link" href="#tipografia"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M9 6v14m6-14v14"/></svg> Tipografía</a>
+      <a class="rail-link" href="#botones"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="9" width="18" height="6" rx="3"/></svg> Botones</a>
+      <a class="rail-link" href="#inputs"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="7" width="18" height="10" rx="2"/><path d="M7 12h4"/></svg> Inputs</a>
+      <a class="rail-link" href="#componentes"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg> Componentes</a>
+      <a class="rail-link" href="#datos"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19V9m6 10V4m6 15v-7"/></svg> Datos</a>
+      <a class="rail-link" href="#dashboard"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18"/></svg> Dashboard</a>
+    </div>
+
+    <div class="rail-toggle">
+      <span id="theme-label">Modo claro</span>
+      <button class="switch" id="theme-switch" onclick="toggleTheme()" aria-label="Cambiar tema"></button>
+    </div>
+  </nav>
+
+  <main class="main">
+
+    <!-- ========== HERO ========== -->
+    <section style="padding-top:0;">
+      <div class="hero">
+        <svg class="hero-wave" viewBox="0 0 800 120" preserveAspectRatio="none" width="100%" height="120">
+          <path d="M0 60 C 100 20, 200 100, 300 60 S 500 20, 600 60 S 750 90, 800 60 V120 H0 Z" fill="rgba(255,255,255,0.14)"/>
+          <path d="M0 80 C 120 40, 220 120, 340 80 S 520 40, 640 80 S 760 110, 800 80 V120 H0 Z" fill="rgba(255,255,255,0.10)"/>
+        </svg>
+        <div class="hero-eyebrow">Sistema de diseño · v1.0</div>
+        <h1>Marea<br>Finanzas del hogar, en calma.</h1>
+        <p>Un lenguaje visual turquesa, cálido y con carácter para llevar el control de gastos, ingresos y metas de ahorro familiares.</p>
+      </div>
+    </section>
+
+    <!-- ========== PALETA ========== -->
+    <section id="paleta">
+      <div class="eyebrow">Fundamentos</div>
+      <h2 class="sec-title">Paleta de colores</h2>
+      <p class="sec-desc">El turquesa es el protagonista: transmite liquidez, calma y control. El índigo aporta contraste y jerarquía. Los colores semánticos comunican el estado de cada movimiento de un vistazo.</p>
+
+      <div class="ramp-group">
+        <div class="ramp-label"><span class="ramp-name">Primary — Turquesa</span><span class="ramp-role">Marca, acciones principales, foco</span></div>
+        <div class="ramp" id="ramp-primary"></div>
+      </div>
+      <div class="ramp-group">
+        <div class="ramp-label"><span class="ramp-name">Secondary — Índigo</span><span class="ramp-role">Contraste, elementos secundarios</span></div>
+        <div class="ramp" id="ramp-secondary"></div>
+      </div>
+      <div class="ramp-group">
+        <div class="ramp-label"><span class="ramp-name">Neutral — Gris azulado</span><span class="ramp-role">Fondos, bordes, texto</span></div>
+        <div class="ramp" id="ramp-neutral"></div>
+      </div>
+
+      <div class="grid-3" style="margin-top:8px;">
+        <div>
+          <div class="ramp-label"><span class="ramp-name">Success</span><span class="ramp-role">Ingresos</span></div>
+          <div class="ramp" style="grid-template-columns:1fr 1fr 1fr;" id="ramp-success"></div>
+        </div>
+        <div>
+          <div class="ramp-label"><span class="ramp-name">Danger</span><span class="ramp-role">Gastos</span></div>
+          <div class="ramp" style="grid-template-columns:1fr 1fr 1fr;" id="ramp-danger"></div>
+        </div>
+        <div>
+          <div class="ramp-label"><span class="ramp-name">Warning</span><span class="ramp-role">Pendientes</span></div>
+          <div class="ramp" style="grid-template-columns:1fr 1fr 1fr;" id="ramp-warning"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== TIPOGRAFÍA ========== -->
+    <section id="tipografia">
+      <div class="eyebrow">Fundamentos</div>
+      <h2 class="sec-title">Tipografía</h2>
+      <p class="sec-desc"><b>Sora</b> para títulos y montos destacados — geométrica, con presencia. <b>Inter</b> para texto de cuerpo e interfaz — máxima legibilidad. <b>JetBrains Mono</b> para cifras en tablas — alineación perfecta de dígitos.</p>
+
+      <div class="type-row"><div class="type-meta">H1 · Sora 800 · 40px</div><div class="type-sample" style="font-size:40px; font-weight:800; letter-spacing:-.02em;">Balance del hogar</div></div>
+      <div class="type-row"><div class="type-meta">H2 · Sora 700 · 28px</div><div class="type-sample" style="font-size:28px; font-weight:700; letter-spacing:-.01em;">Resumen mensual</div></div>
+      <div class="type-row"><div class="type-meta">H3 · Sora 600 · 20px</div><div class="type-sample" style="font-size:20px; font-weight:600;">Gastos por categoría</div></div>
+      <div class="type-row"><div class="type-meta">H4 · Sora 600 · 16px</div><div class="type-sample" style="font-size:16px; font-weight:600;">Meta: Vacaciones familiares</div></div>
+      <div class="type-row"><div class="type-meta">Body L · Inter 500 · 16px</div><div class="type-body-sample" style="font-size:16px; font-weight:500;">Este mes gastaron un 12% menos que el anterior.</div></div>
+      <div class="type-row"><div class="type-meta">Body · Inter 400 · 15px</div><div class="type-body-sample" style="font-size:15px;">Registrá tus movimientos diarios para mantener el presupuesto bajo control.</div></div>
+      <div class="type-row"><div class="type-meta">Small · Inter 500 · 13px</div><div class="type-body-sample" style="font-size:13px; color:var(--text-2);">Actualizado hace 5 minutos</div></div>
+      <div class="type-row"><div class="type-meta">Caption · Inter 600 · 11px</div><div class="type-body-sample" style="font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.06em; color:var(--text-3);">Categoría · Supermercado</div></div>
+      <div class="type-row"><div class="type-meta">Monto grande · Sora 800 · 34px</div><div class="amount-sample" style="font-size:34px; font-weight:800;">$48.250,00</div></div>
+      <div class="type-row"><div class="type-meta">Monto tabla · Mono 600 · 14px</div><div class="amount-sample" style="font-size:14px; font-weight:600; font-family:var(--font-mono);">-$3.480,50</div></div>
+    </section>
+
+    <!-- ========== BOTONES ========== -->
+    <section id="botones">
+      <div class="eyebrow">Componentes</div>
+      <h2 class="sec-title">Botones</h2>
+      <p class="sec-desc">Variantes por jerarquía de acción y tres tamaños. El primario usa degradé turquesa con resplandor en hover — reservado para una sola acción principal por pantalla.</p>
+
+      <div class="subhead">Jerarquía (tamaño medio)</div>
+      <div class="btn-row">
+        <button class="btn btn-primary btn-md">Registrar gasto</button>
+        <button class="btn btn-secondary btn-md">Cancelar</button>
+        <button class="btn btn-ghost btn-md">Ver detalle</button>
+        <button class="btn btn-danger btn-md">Eliminar</button>
+        <button class="btn btn-disabled btn-md">No disponible</button>
+      </div>
+
+      <div class="subhead">Tamaños (primario)</div>
+      <div class="btn-row">
+        <button class="btn btn-primary btn-sm">Guardar</button>
+        <button class="btn btn-primary btn-md">Guardar</button>
+        <button class="btn btn-primary btn-lg">Guardar</button>
+      </div>
+
+      <div class="subhead">Con ícono</div>
+      <div class="btn-row">
+        <button class="btn btn-primary btn-md"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 5v14M5 12h14"/></svg> Nuevo movimiento</button>
+        <button class="btn btn-secondary btn-md"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 5v14M5 12h14"/></svg> Nueva meta</button>
+      </div>
+    </section>
+
+    <!-- ========== INPUTS ========== -->
+    <section id="inputs">
+      <div class="eyebrow">Componentes</div>
+      <h2 class="sec-title">Campos de formulario</h2>
+      <p class="sec-desc">Bordes definidos, foco con anillo turquesa suave y estados claros de error y deshabilitado.</p>
+
+      <div class="subhead">Estados — texto</div>
+      <div class="fields-grid">
+        <div class="field">
+          <label>Descripción</label>
+          <input type="text" placeholder="Ej. Supermercado Disco">
+          <span class="help">Se mostrará en el listado de movimientos.</span>
+        </div>
+        <div class="field error">
+          <label>Descripción</label>
+          <input type="text" value="">
+          <span class="help">Este campo es obligatorio.</span>
+        </div>
+        <div class="field disabled">
+          <label>Descripción</label>
+          <input type="text" value="Cuota fija — no editable" disabled>
+        </div>
+      </div>
+
+      <div class="subhead">Monto, fecha y selección</div>
+      <div class="fields-grid">
+        <div class="field amount-field">
+          <label>Monto</label>
+          <span class="prefix">$</span>
+          <input type="text" placeholder="0,00">
+        </div>
+        <div class="field">
+          <label>Fecha</label>
+          <input type="date">
+        </div>
+        <div class="field">
+          <label>Categoría</label>
+          <select>
+            <option>Supermercado</option>
+            <option>Servicios</option>
+            <option>Ocio</option>
+            <option>Ahorro</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="subhead">Selección</div>
+      <div class="check-row"><input type="checkbox" class="chk" checked><label>Repetir este gasto todos los meses</label></div>
+      <div class="check-row"><input type="checkbox" class="chk"><label>Notificarme antes del vencimiento</label></div>
+      <div class="check-row"><input type="radio" name="r" class="rdo" checked><label>Cuenta conjunta</label></div>
+      <div class="check-row"><input type="radio" name="r" class="rdo"><label>Cuenta individual</label></div>
+      <div class="check-row"><button class="toggle on" onclick="this.classList.toggle('on')"></button><label>Incluir en el presupuesto mensual</label></div>
+    </section>
+
+    <!-- ========== COMPONENTES ========== -->
+    <section id="componentes">
+      <div class="eyebrow">Componentes</div>
+      <h2 class="sec-title">Tarjetas y etiquetas</h2>
+      <p class="sec-desc">Bloques reutilizables para resumir balance, categorías y metas de ahorro.</p>
+
+      <div class="subhead">Balance principal</div>
+      <div class="balance-card card" style="max-width:420px;">
+        <svg class="wave-bg" viewBox="0 0 400 60" preserveAspectRatio="none" width="100%" height="60">
+          <path d="M0 30 C 50 10,100 50,150 30 S 250 10,300 30 S 380 45,400 30 V60 H0 Z" fill="rgba(255,255,255,0.18)"/>
+        </svg>
+        <div class="card-title">Balance disponible</div>
+        <div class="balance-amount tabular">$182.430,00</div>
+        <div class="balance-sub">
+          <span class="balance-chip">↑ Ingresos $310.000</span>
+          <span class="balance-chip">↓ Gastos $127.570</span>
+        </div>
+      </div>
+
+      <div class="subhead">Categorías de gasto</div>
+      <div class="grid-3">
+        <div class="card category-card">
+          <div class="cat-top">
+            <div class="cat-icon" style="background:var(--primary-50); color:var(--primary-700);">🛒</div>
+            <span class="badge badge-neutral">62%</span>
+          </div>
+          <div class="card-title" style="margin-bottom:0;">Supermercado</div>
+          <div class="cat-amount tabular">$38.200</div>
+          <div class="bar-track"><div class="bar-fill" style="width:62%; background:var(--primary-500);"></div></div>
+        </div>
+        <div class="card category-card">
+          <div class="cat-top">
+            <div class="cat-icon" style="background:#EEF2FF; color:var(--secondary-700);">💡</div>
+            <span class="badge badge-neutral">38%</span>
+          </div>
+          <div class="card-title" style="margin-bottom:0;">Servicios</div>
+          <div class="cat-amount tabular">$21.900</div>
+          <div class="bar-track"><div class="bar-fill" style="width:38%; background:var(--secondary-500);"></div></div>
+        </div>
+        <div class="card category-card">
+          <div class="cat-top">
+            <div class="cat-icon" style="background:var(--warning-100); color:var(--warning-700);">🎬</div>
+            <span class="badge badge-neutral">21%</span>
+          </div>
+          <div class="card-title" style="margin-bottom:0;">Ocio</div>
+          <div class="cat-amount tabular">$12.450</div>
+          <div class="bar-track"><div class="bar-fill" style="width:21%; background:var(--warning-500);"></div></div>
+        </div>
+      </div>
+
+      <div class="subhead">Meta de ahorro</div>
+      <div class="card goal-card" style="max-width:420px;">
+        <div class="ring" style="background:conic-gradient(var(--primary-500) 0% 68%, var(--n-200) 68% 100%);">
+          <div style="width:60px; height:60px; border-radius:50%; background:var(--surface); display:flex; align-items:center; justify-content:center;">
+            <span>68%</span>
+          </div>
+        </div>
+        <div>
+          <div class="card-title" style="margin-bottom:2px;">Vacaciones familiares</div>
+          <div style="font-family:var(--font-display); font-weight:700; font-size:18px;">$204.000 <span style="color:var(--text-3); font-weight:500; font-size:13px;">de $300.000</span></div>
+          <div style="font-size:12px; color:var(--text-3); margin-top:2px;">Faltan $96.000 · 4 meses restantes</div>
+        </div>
+      </div>
+
+      <div class="subhead">Estados / etiquetas</div>
+      <div class="btn-row">
+        <span class="badge badge-success"><span class="badge-dot"></span> Pagado</span>
+        <span class="badge badge-warning"><span class="badge-dot"></span> Pendiente</span>
+        <span class="badge badge-danger"><span class="badge-dot"></span> Vencido</span>
+        <span class="badge badge-neutral">Supermercado</span>
+        <span class="badge badge-neutral">Transporte</span>
+      </div>
+    </section>
+
+    <!-- ========== DATOS ========== -->
+    <section id="datos">
+      <div class="eyebrow">Componentes</div>
+      <h2 class="sec-title">Visualización de datos</h2>
+      <p class="sec-desc">Gráficos ligeros para tendencias de balance y distribución de gastos, más una tabla de movimientos.</p>
+
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title">Tendencia de balance — últimos 7 meses</div>
+          <svg viewBox="0 0 320 90" width="100%" height="90" style="margin-top:10px;">
+            <polyline points="0,60 45,50 90,58 135,30 180,40 225,15 270,25 320,8" fill="none" stroke="var(--primary-500)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+            <circle cx="320" cy="8" r="4" fill="var(--primary-500)"/>
+          </svg>
+        </div>
+        <div class="card">
+          <div class="card-title">Distribución de gastos del mes</div>
+          <div style="display:flex; align-items:center; gap:20px; margin-top:8px;">
+            <div style="width:88px; height:88px; border-radius:50%; background:conic-gradient(var(--primary-500) 0% 42%, var(--secondary-500) 42% 68%, var(--warning-500) 68% 85%, var(--n-300) 85% 100%); flex-shrink:0;"></div>
+            <div class="donut-legend" style="margin-top:0;">
+              <div class="legend-row"><span class="legend-dot" style="background:var(--primary-500);"></span>Supermercado<span>42%</span></div>
+              <div class="legend-row"><span class="legend-dot" style="background:var(--secondary-500);"></span>Servicios<span>26%</span></div>
+              <div class="legend-row"><span class="legend-dot" style="background:var(--warning-500);"></span>Ocio<span>17%</span></div>
+              <div class="legend-row"><span class="legend-dot" style="background:var(--n-300);"></span>Otros<span>15%</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="subhead">Últimos movimientos</div>
+      <div class="card" style="padding:8px 6px;">
+        <table class="tx">
+          <tr><th>Movimiento</th><th>Categoría</th><th>Fecha</th><th>Estado</th><th style="text-align:right;">Monto</th></tr>
+          <tr>
+            <td><div class="tx-name"><span class="tx-icon" style="background:var(--primary-50); color:var(--primary-700);">🛒</span>Supermercado Disco</div></td>
+            <td><span class="badge badge-neutral">Alimentos</span></td>
+            <td>28 jun</td>
+            <td><span class="badge badge-success">Pagado</span></td>
+            <td style="text-align:right;" class="amt-neg">-$8.450,00</td>
+          </tr>
+          <tr>
+            <td><div class="tx-name"><span class="tx-icon" style="background:var(--success-100); color:var(--success-700);">💼</span>Sueldo — Junio</div></td>
+            <td><span class="badge badge-neutral">Ingreso</span></td>
+            <td>27 jun</td>
+            <td><span class="badge badge-success">Pagado</span></td>
+            <td style="text-align:right;" class="amt-pos">+$310.000,00</td>
+          </tr>
+          <tr>
+            <td><div class="tx-name"><span class="tx-icon" style="background:#EEF2FF; color:var(--secondary-700);">💡</span>Factura de luz</div></td>
+            <td><span class="badge badge-neutral">Servicios</span></td>
+            <td>25 jun</td>
+            <td><span class="badge badge-warning">Pendiente</span></td>
+            <td style="text-align:right;" class="amt-neg">-$5.230,00</td>
+          </tr>
+          <tr>
+            <td><div class="tx-name"><span class="tx-icon" style="background:var(--danger-100); color:var(--danger-700);">📶</span>Internet hogar</div></td>
+            <td><span class="badge badge-neutral">Servicios</span></td>
+            <td>18 jun</td>
+            <td><span class="badge badge-danger">Vencido</span></td>
+            <td style="text-align:right;" class="amt-neg">-$3.480,50</td>
+          </tr>
+        </table>
+      </div>
+    </section>
+
+    <!-- ========== DASHBOARD DEMO ========== -->
+    <section id="dashboard">
+      <div class="eyebrow">Aplicado</div>
+      <h2 class="sec-title">Pantalla de ejemplo — Dashboard</h2>
+      <p class="sec-desc">Los mismos tokens y componentes aplicados a una pantalla real, para ver el sistema en contexto.</p>
+
+      <div class="demo-wrap">
+        <div class="demo">
+          <div class="demo-side">
+            <div class="brand" style="padding-bottom:14px;">
+              <svg width="26" height="26" viewBox="0 0 30 30" fill="none">
+                <circle cx="15" cy="15" r="15" fill="#06B6D4"/>
+                <path d="M4 17c2.5-3 4.5 3 7 0s4.5-3 7 0 4.5 3 7 0" stroke="#fff" stroke-width="2" stroke-linecap="round" fill="none"/>
+              </svg>
+              <div class="brand-name" style="font-size:16px;">Marea</div>
+            </div>
+            <div class="rail-nav">
+              <a class="rail-link active" href="#dashboard"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18"/></svg> Resumen</a>
+              <a class="rail-link" href="#dashboard"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19V9m6 10V4m6 15v-7"/></svg> Movimientos</a>
+              <a class="rail-link" href="#dashboard"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="8"/></svg> Metas</a>
+              <a class="rail-link" href="#dashboard"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M2 12h20"/></svg> Presupuesto</a>
+            </div>
+          </div>
+
+          <div class="demo-main">
+            <div class="demo-topbar">
+              <div>
+                <div style="font-family:var(--font-display); font-weight:700; font-size:19px;">Hola, familia Gómez 👋</div>
+                <div style="font-size:12.5px; color:var(--text-3);">Martes 30 de junio</div>
+              </div>
+              <div class="demo-user">
+                <div class="demo-search"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4-4"/></svg> Buscar movimiento…</div>
+                <div class="avatar">FG</div>
+              </div>
+            </div>
+
+            <div class="stat-row">
+              <div class="balance-card card">
+                <svg class="wave-bg" viewBox="0 0 400 50" preserveAspectRatio="none" width="100%" height="50"><path d="M0 25 C 50 8,100 42,150 25 S 250 8,300 25 S 380 38,400 25 V50 H0 Z" fill="rgba(255,255,255,0.18)"/></svg>
+                <div class="card-title">Balance disponible</div>
+                <div class="balance-amount tabular" style="font-size:30px;">$182.430,00</div>
+              </div>
+              <div class="mini-stat">
+                <div class="lbl">Ingresos del mes</div>
+                <div class="val tabular">$310.000</div>
+                <div class="trend up">↑ 8% vs. mayo</div>
+              </div>
+              <div class="mini-stat">
+                <div class="lbl">Gastos del mes</div>
+                <div class="val tabular">$127.570</div>
+                <div class="trend down">↓ 12% vs. mayo</div>
+              </div>
+            </div>
+
+            <div class="grid-2">
+              <div class="card">
+                <div class="card-title">Meta: Vacaciones familiares</div>
+                <div class="goal-card" style="margin-top:6px;">
+                  <div class="ring" style="width:64px; height:64px; background:conic-gradient(var(--primary-500) 0% 68%, var(--n-200) 68% 100%);">
+                    <div style="width:48px; height:48px; border-radius:50%; background:var(--surface); display:flex; align-items:center; justify-content:center;"><span style="font-size:13px;">68%</span></div>
+                  </div>
+                  <div>
+                    <div style="font-family:var(--font-display); font-weight:700; font-size:16px;">$204.000<span style="color:var(--text-3); font-weight:500; font-size:12px;"> / $300.000</span></div>
+                    <div style="font-size:11.5px; color:var(--text-3);">4 meses restantes</div>
+                  </div>
+                </div>
+              </div>
+              <div class="card">
+                <div class="card-title">Distribución de gastos</div>
+                <div style="display:flex; align-items:center; gap:16px; margin-top:6px;">
+                  <div style="width:64px; height:64px; border-radius:50%; background:conic-gradient(var(--primary-500) 0% 42%, var(--secondary-500) 42% 68%, var(--warning-500) 68% 85%, var(--n-300) 85% 100%); flex-shrink:0;"></div>
+                  <div class="donut-legend" style="margin-top:0;">
+                    <div class="legend-row"><span class="legend-dot" style="background:var(--primary-500);"></span>Supermercado<span>42%</span></div>
+                    <div class="legend-row"><span class="legend-dot" style="background:var(--secondary-500);"></span>Servicios<span>26%</span></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="subhead">Movimientos recientes</div>
+            <div class="card" style="padding:6px 4px;">
+              <table class="tx">
+                <tr><th>Movimiento</th><th>Estado</th><th style="text-align:right;">Monto</th></tr>
+                <tr><td><div class="tx-name"><span class="tx-icon" style="background:var(--primary-50); color:var(--primary-700);">🛒</span>Supermercado Disco</div></td><td><span class="badge badge-success">Pagado</span></td><td style="text-align:right;" class="amt-neg">-$8.450,00</td></tr>
+                <tr><td><div class="tx-name"><span class="tx-icon" style="background:#EEF2FF; color:var(--secondary-700);">💡</span>Factura de luz</div></td><td><span class="badge badge-warning">Pendiente</span></td><td style="text-align:right;" class="amt-neg">-$5.230,00</td></tr>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <footer>
+      <span>Marea — Sistema de diseño financiero del hogar</span>
+      <span>v1.0 · Modo claro / oscuro</span>
+    </footer>
+
+  </main>
+</div>
+
+<script>
+function buildRamp(id, stops, showLabel){
+  const el = document.getElementById(id);
+  el.innerHTML = stops.map(function(s){
+    var textColor = s.dark ? '#fff' : '#0B2530';
+    return '<div class="swatch" style="background:'+s.hex+'; color:'+textColor+';"><b>'+s.name+'</b>'+s.hex+'</div>';
+  }).join('');
+}
+buildRamp('ramp-primary', [
+  {name:'50', hex:'#ECFEFF', dark:false},{name:'100', hex:'#CFFAFE', dark:false},{name:'200', hex:'#A5F3FC', dark:false},
+  {name:'300', hex:'#67E8F9', dark:false},{name:'400', hex:'#22D3EE', dark:false},{name:'500', hex:'#06B6D4', dark:true},
+  {name:'600', hex:'#0891B2', dark:true},{name:'700', hex:'#0E7490', dark:true},{name:'800', hex:'#155E75', dark:true}
+]);
+buildRamp('ramp-secondary', [
+  {name:'50', hex:'#EEF2FF', dark:false},{name:'100', hex:'#E0E7FF', dark:false},{name:'300', hex:'#A5B4FC', dark:false},
+  {name:'400', hex:'#818CF8', dark:false},{name:'500', hex:'#6366F1', dark:true},{name:'600', hex:'#4F46E5', dark:true},
+  {name:'700', hex:'#4338CA', dark:true},{name:'800', hex:'#3730A3', dark:true},{name:'900', hex:'#312E81', dark:true}
+]);
+buildRamp('ramp-neutral', [
+  {name:'50', hex:'#F5FAFB', dark:false},{name:'100', hex:'#EAF3F5', dark:false},{name:'200', hex:'#DCEEF1', dark:false},
+  {name:'300', hex:'#C3D9DE', dark:false},{name:'400', hex:'#94AEB5', dark:false},{name:'500', hex:'#64828A', dark:true},
+  {name:'600', hex:'#4F717A', dark:true},{name:'700', hex:'#38545C', dark:true},{name:'900', hex:'#0B2530', dark:true}
+]);
+buildRamp('ramp-success', [{name:'100', hex:'#D1FAE5', dark:false},{name:'500', hex:'#10B981', dark:true},{name:'700', hex:'#047857', dark:true}]);
+buildRamp('ramp-danger', [{name:'100', hex:'#FFE4E6', dark:false},{name:'500', hex:'#F43F5E', dark:true},{name:'700', hex:'#BE123C', dark:true}]);
+buildRamp('ramp-warning', [{name:'100', hex:'#FEF3C7', dark:false},{name:'500', hex:'#F59E0B', dark:true},{name:'700', hex:'#B45309', dark:true}]);
+
+function toggleTheme(){
+  const body = document.body;
+  const isDark = body.getAttribute('data-theme') === 'dark';
+  body.setAttribute('data-theme', isDark ? 'light' : 'dark');
+  document.getElementById('theme-label').textContent = isDark ? 'Modo claro' : 'Modo oscuro';
+}
+
+const links = document.querySelectorAll('.rail-nav .rail-link');
+const secs = document.querySelectorAll('main section[id]');
+window.addEventListener('scroll', function(){
+  let current = secs[0].id;
+  secs.forEach(function(s){ if(window.scrollY >= s.offsetTop - 100) current = s.id; });
+  links.forEach(function(l){
+    l.classList.toggle('active', l.getAttribute('href') === '#'+current);
+  });
+}, {passive:true});
+</script>
+</body>
+</html>
