@@ -76,6 +76,53 @@ import { toInputDate, validarDescripcion, validarMontoPositivo } from '../../cor
       </div>
     </form>
 
+    <div *ngIf="hogarId" style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px;">
+      <button *ngFor="let p of presets" type="button" class="btn btn-sm"
+        [class.btn-primary]="filtroPreset === p.id"
+        [class.btn-secondary]="filtroPreset !== p.id"
+        style="font-size:12px; padding:4px 12px;"
+        (click)="aplicarPreset(p.id)">{{ p.label }}</button>
+    </div>
+
+    <div *ngIf="hogarId" style="display:flex; align-items:flex-end; gap:12px; flex-wrap:wrap; margin-bottom:16px;">
+      <div style="display:flex; flex-direction:column; gap:2px;">
+        <label style="font-size:11px; font-weight:600; color:var(--text-2);">Desde</label>
+        <app-date-picker [(ngModel)]="filtroDesde" name="filtroDesde" placeholder="dd/mm/aaaa" style="width:130px;"></app-date-picker>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:2px;">
+        <label style="font-size:11px; font-weight:600; color:var(--text-2);">Hasta</label>
+        <app-date-picker [(ngModel)]="filtroHasta" name="filtroHasta" placeholder="dd/mm/aaaa" style="width:130px;"></app-date-picker>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:2px;">
+        <label style="font-size:11px; font-weight:600; color:var(--text-2);">Tipo</label>
+        <select [(ngModel)]="filtroTipo" name="filtroTipo"
+          style="min-height:40px; padding:10px 12px; font-size:14px; border:1.5px solid var(--border-strong); border-radius:var(--radius-sm); background:var(--surface); font-family:var(--font-body); color:var(--text-1); outline:none;">
+          <option value="">Todos</option>
+          <option value="PUNTUAL">Puntual</option>
+          <option value="RECURRENTE">Recurrente</option>
+          <option value="INDEFINIDO">Indefinido</option>
+        </select>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:2px;">
+        <label style="font-size:11px; font-weight:600; color:var(--text-2);">Categoría</label>
+        <select [(ngModel)]="filtroCategoriaId" name="filtroCategoriaId"
+          style="min-height:40px; padding:10px 12px; font-size:14px; border:1.5px solid var(--border-strong); border-radius:var(--radius-sm); background:var(--surface); font-family:var(--font-body); color:var(--text-1); outline:none;">
+          <option value="">Todas</option>
+          <option *ngFor="let c of categorias" [value]="c.id">{{ c.icon }} {{ c.nombre }}</option>
+        </select>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:2px;">
+        <label style="font-size:11px; font-weight:600; color:var(--text-2);">Tarjeta</label>
+        <select [(ngModel)]="filtroTarjetaId" name="filtroTarjetaId"
+          style="min-height:40px; padding:10px 12px; font-size:14px; border:1.5px solid var(--border-strong); border-radius:var(--radius-sm); background:var(--surface); font-family:var(--font-body); color:var(--text-1); outline:none;">
+          <option value="">Todas</option>
+          <option *ngFor="let t of tarjetas" [value]="t.id">{{ t.nombre }} ({{ t.ultimo4 }})</option>
+        </select>
+      </div>
+      <button type="button" class="btn btn-primary btn-md" (click)="aplicarFiltro()">Filtrar</button>
+      <button *ngIf="filtroActivo" type="button" class="btn btn-secondary btn-md" (click)="limpiarFiltro()">Limpiar</button>
+    </div>
+
     <div *ngIf="hogarId && !gastos.length" class="no-hogar">
       <h3>Todavía no cargaste gastos</h3>
       <p>Registrá tu primer gasto para empezar a controlar tus finanzas.</p>
@@ -137,18 +184,100 @@ export class GastosComponent implements OnInit {
 
   form: { descripcion: string; monto: number; tipo: 'PUNTUAL' | 'RECURRENTE' | 'INDEFINIDO'; fechaInicio: string; cuotasTotales: number; tarjetaId: string; categoriaId: string } = { descripcion: '', monto: 0, tipo: 'PUNTUAL', fechaInicio: '', cuotasTotales: 0, tarjetaId: '', categoriaId: '' };
 
+  filtroDesde = '';
+  filtroHasta = '';
+  filtroTipo = '';
+  filtroCategoriaId = '';
+  filtroTarjetaId = '';
+  filtroActivo = false;
+  filtroPreset = 'este-mes';
+  readonly presets = [
+    { id: 'este-mes', label: 'Este mes' },
+    { id: 'mes-anterior', label: 'Mes anterior' },
+    { id: 'ultimos-3', label: 'Últ. 3 meses' },
+    { id: 'ultimos-6', label: 'Últ. 6 meses' },
+    { id: 'este-anio', label: 'Este año' },
+  ];
+
   ngOnInit() {
     this.hogarId = localStorage.getItem('hogarId') || '';
-    if (this.hogarId) this.cargarDatos();
+    if (this.hogarId) {
+      this.cargarDatos();
+      this.aplicarPreset('este-mes');
+    }
   }
 
   cargarDatos() {
     if (!this.hogarId) return;
     this.tarjetaService.listarPorHogar(this.hogarId).subscribe(t => this.tarjetas = t);
     this.categoriaService.listar(this.hogarId).subscribe(c => this.categorias = c);
-    this.gastoService.listarPorHogar(this.hogarId).subscribe(g => {
-      this.gastos = g;
-    });
+  }
+
+  private calcularPreset(preset: string) {
+    const hoy = new Date();
+    const y = hoy.getFullYear();
+    const m = hoy.getMonth();
+    switch (preset) {
+      case 'este-mes': {
+        const desde = new Date(y, m, 1);
+        const hasta = new Date(y, m + 1, 0);
+        return { desde: desde.toISOString().slice(0, 10), hasta: hasta.toISOString().slice(0, 10) };
+      }
+      case 'mes-anterior': {
+        const desde = new Date(y, m - 1, 1);
+        const hasta = new Date(y, m, 0);
+        return { desde: desde.toISOString().slice(0, 10), hasta: hasta.toISOString().slice(0, 10) };
+      }
+      case 'ultimos-3': {
+        const desde = new Date(y, m - 3, 1);
+        const hasta = hoy;
+        return { desde: desde.toISOString().slice(0, 10), hasta: hasta.toISOString().slice(0, 10) };
+      }
+      case 'ultimos-6': {
+        const desde = new Date(y, m - 6, 1);
+        const hasta = hoy;
+        return { desde: desde.toISOString().slice(0, 10), hasta: hasta.toISOString().slice(0, 10) };
+      }
+      case 'este-anio': {
+        const desde = new Date(y, 0, 1);
+        const hasta = new Date(y, 11, 31);
+        return { desde: desde.toISOString().slice(0, 10), hasta: hasta.toISOString().slice(0, 10) };
+      }
+      default:
+        return { desde: '', hasta: '' };
+    }
+  }
+
+  aplicarPreset(preset: string) {
+    this.filtroPreset = preset;
+    this.filtroTipo = '';
+    this.filtroCategoriaId = '';
+    this.filtroTarjetaId = '';
+    const { desde, hasta } = this.calcularPreset(preset);
+    this.filtroDesde = desde;
+    this.filtroHasta = hasta;
+    this.filtroActivo = true;
+    this.gastoService.listarPorFiltros(this.hogarId, {
+      desde: desde || undefined,
+      hasta: hasta || undefined,
+    }).subscribe(g => this.gastos = g);
+  }
+
+  aplicarFiltro() {
+    if (!this.hogarId) return;
+    this.filtroPreset = 'personalizado';
+    this.filtroActivo = true;
+    this.gastoService.listarPorFiltros(this.hogarId, {
+      desde: this.filtroDesde || undefined,
+      hasta: this.filtroHasta || undefined,
+      tipo: this.filtroTipo || undefined,
+      categoriaId: this.filtroCategoriaId || undefined,
+      tarjetaId: this.filtroTarjetaId || undefined,
+    }).subscribe(g => this.gastos = g);
+  }
+
+  limpiarFiltro() {
+    this.aplicarPreset('este-mes');
   }
 
   onTipoChange() {
@@ -196,12 +325,12 @@ export class GastosComponent implements OnInit {
     };
     if (this.editando) {
       this.gastoService.actualizar(this.editId, payload).subscribe({
-        next: () => { this.cancelar(); this.cargarDatos(); this.toast.show('Gasto actualizado', 'success'); },
+        next: () => { this.cancelar(); this.cargarDatos(); this.aplicarPreset(this.filtroPreset); this.toast.show('Gasto actualizado', 'success'); },
         error: (err) => this.toast.showApiError(err, 'Error al actualizar')
       });
     } else {
       this.gastoService.crear({ hogarId: this.hogarId, ...payload }).subscribe({
-        next: () => { this.resetForm(); this.cargarDatos(); this.toast.show('Gasto creado', 'success'); },
+        next: () => { this.resetForm(); this.cargarDatos(); this.aplicarPreset(this.filtroPreset); this.toast.show('Gasto creado', 'success'); },
         error: (err) => this.toast.showApiError(err, 'Error al crear')
       });
     }
@@ -234,13 +363,13 @@ export class GastosComponent implements OnInit {
   }
 
   pagarCuota(id: string) {
-    this.gastoService.pagarCuota(id).subscribe(() => this.cargarDatos());
+    this.gastoService.pagarCuota(id).subscribe(() => { this.cargarDatos(); this.aplicarPreset(this.filtroPreset); });
   }
 
   async eliminar(id: string) {
     const ok = await this.confirmService.confirm('¿Eliminar este gasto?');
     if (ok) {
-      this.gastoService.eliminar(id).subscribe(() => { this.cargarDatos(); this.toast.show('Gasto eliminado', 'success'); });
+      this.gastoService.eliminar(id).subscribe(() => { this.cargarDatos(); this.aplicarPreset(this.filtroPreset); this.toast.show('Gasto eliminado', 'success'); });
     }
   }
 }

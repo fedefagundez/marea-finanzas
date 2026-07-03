@@ -69,8 +69,26 @@ router.get('/hogar/:hogarId', authMiddleware, async (req: AuthRequest, res, next
   try {
     await verificarMiembro(req.usuarioId!, req.params.hogarId);
 
+    const { desde, hasta, tipo, categoriaId, tarjetaId } = req.query;
+
+    const where: Record<string, unknown> = { hogarId: req.params.hogarId };
+
+    if (desde || hasta) {
+      where.fechaInicio = {};
+      if (desde) (where.fechaInicio as Record<string, Date>).gte = new Date(desde as string);
+      if (hasta) (where.fechaInicio as Record<string, Date>).lte = new Date(hasta as string);
+    }
+
+    const tipoGasto = tipo as string | undefined;
+    if (tipoGasto && ['PUNTUAL', 'RECURRENTE', 'INDEFINIDO'].includes(tipoGasto)) {
+      where.tipo = tipoGasto;
+    }
+
+    if (categoriaId) where.categoriaId = categoriaId as string;
+    if (tarjetaId) where.tarjetaId = tarjetaId as string;
+
     const gastos = await prisma.gasto.findMany({
-      where: { hogarId: req.params.hogarId },
+      where,
       include: {
         tarjeta: { select: { id: true, nombre: true, ultimo4: true } },
         categoria: { select: { id: true, nombre: true, icon: true } },
