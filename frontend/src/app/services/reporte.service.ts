@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
-import { BalanceMes, Dashboard, Evolucion, MovimientoReciente, Proyeccion, DistribucionGasto } from '../models';
+import { BalanceMes, Dashboard, Evolucion, EvolucionItem, MovimientoReciente, Proyeccion, DistribucionGasto } from '../models';
 
 @Injectable({ providedIn: 'root' })
 export class ReporteService {
@@ -35,6 +35,12 @@ export class ReporteService {
   movimientosRecientes(hogarId: string, limite: number = 5): Observable<MovimientoReciente[]> {
     return this.http.get<MovimientoReciente[]>(`${this.apiUrl}/hogar/${hogarId}/movimientos-recientes`, {
       params: { limite: limite.toString() }
+    });
+  }
+
+  evolucionCompleta(hogarId: string, pasado = 6, futuro = 6): Observable<{ data: EvolucionItem[] }> {
+    return this.http.get<{ data: EvolucionItem[] }>(`${this.apiUrl}/hogar/${hogarId}/evolucion-completa`, {
+      params: { pasado: pasado.toString(), futuro: futuro.toString() }
     });
   }
 

@@ -111,6 +111,15 @@ export interface DistribucionGasto {
   porcentaje: number;
 }
 
+export interface EvolucionItem {
+  mes: string;
+  label: string;
+  ingresos: number;
+  gastos: number;
+  balance: number;
+  tipo: 'REAL' | 'PROYECTADO';
+}
+
 export interface MovimientoReciente {
   id: string;
   tipo: 'INGRESO' | 'GASTO';
