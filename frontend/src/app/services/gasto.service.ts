@@ -27,6 +27,22 @@ export class GastoService {
     return this.http.get<Gasto[]>(`${this.apiUrl}/hogar/${hogarId}`);
   }
 
+  listarPorFiltros(hogarId: string, filtros: {
+    desde?: string;
+    hasta?: string;
+    tipo?: string;
+    categoriaId?: string;
+    tarjetaId?: string;
+  } = {}): Observable<Gasto[]> {
+    const params: Record<string, string> = {};
+    if (filtros.desde) params['desde'] = filtros.desde;
+    if (filtros.hasta) params['hasta'] = filtros.hasta;
+    if (filtros.tipo) params['tipo'] = filtros.tipo;
+    if (filtros.categoriaId) params['categoriaId'] = filtros.categoriaId;
+    if (filtros.tarjetaId) params['tarjetaId'] = filtros.tarjetaId;
+    return this.http.get<Gasto[]>(`${this.apiUrl}/hogar/${hogarId}`, { params });
+  }
+
   actualizar(id: string, data: Partial<Gasto>): Observable<Gasto> {
     return this.http.put<Gasto>(`${this.apiUrl}/${id}`, data);
   }

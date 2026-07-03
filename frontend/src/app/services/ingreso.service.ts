@@ -25,6 +25,13 @@ export class IngresoService {
     return this.http.get<Ingreso[]>(`${this.apiUrl}/hogar/${hogarId}`);
   }
 
+  listarPorFiltros(hogarId: string, desde?: string, hasta?: string): Observable<Ingreso[]> {
+    let params: any = {};
+    if (desde) params.desde = desde;
+    if (hasta) params.hasta = hasta;
+    return this.http.get<Ingreso[]>(`${this.apiUrl}/hogar/${hogarId}`, { params });
+  }
+
   actualizar(id: string, data: Partial<Ingreso>): Observable<Ingreso> {
     return this.http.put<Ingreso>(`${this.apiUrl}/${id}`, data);
   }

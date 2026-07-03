@@ -56,8 +56,20 @@ router.get('/hogar/:hogarId', authMiddleware, async (req: AuthRequest, res, next
   try {
     await verificarMiembro(req.usuarioId!, req.params.hogarId);
 
+    const { desde, hasta } = req.query;
+
+    const where: { hogarId: string; fechaInicio?: { gte?: Date; lte?: Date } } = {
+      hogarId: req.params.hogarId,
+    };
+
+    if (desde || hasta) {
+      where.fechaInicio = {};
+      if (desde) where.fechaInicio.gte = new Date(desde as string);
+      if (hasta) where.fechaInicio.lte = new Date(hasta as string);
+    }
+
     const ingresos = await prisma.ingreso.findMany({
-      where: { hogarId: req.params.hogarId },
+      where,
       orderBy: { fechaInicio: 'desc' },
     });
 

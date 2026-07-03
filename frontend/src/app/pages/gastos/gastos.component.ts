@@ -76,6 +76,45 @@ import { toInputDate, validarDescripcion, validarMontoPositivo } from '../../cor
       </div>
     </form>
 
+    <div *ngIf="hogarId" style="display:flex; align-items:flex-end; gap:12px; flex-wrap:wrap; margin-bottom:16px;">
+      <div style="display:flex; flex-direction:column; gap:2px;">
+        <label style="font-size:11px; font-weight:600; color:var(--text-2);">Desde</label>
+        <app-date-picker [(ngModel)]="filtroDesde" name="filtroDesde" placeholder="dd/mm/aaaa" style="width:130px;"></app-date-picker>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:2px;">
+        <label style="font-size:11px; font-weight:600; color:var(--text-2);">Hasta</label>
+        <app-date-picker [(ngModel)]="filtroHasta" name="filtroHasta" placeholder="dd/mm/aaaa" style="width:130px;"></app-date-picker>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:2px;">
+        <label style="font-size:11px; font-weight:600; color:var(--text-2);">Tipo</label>
+        <select [(ngModel)]="filtroTipo" name="filtroTipo"
+          style="min-height:40px; padding:10px 12px; font-size:14px; border:1.5px solid var(--border-strong); border-radius:var(--radius-sm); background:var(--surface); font-family:var(--font-body); color:var(--text-1); outline:none;">
+          <option value="">Todos</option>
+          <option value="PUNTUAL">Puntual</option>
+          <option value="RECURRENTE">Recurrente</option>
+          <option value="INDEFINIDO">Indefinido</option>
+        </select>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:2px;">
+        <label style="font-size:11px; font-weight:600; color:var(--text-2);">Categoría</label>
+        <select [(ngModel)]="filtroCategoriaId" name="filtroCategoriaId"
+          style="min-height:40px; padding:10px 12px; font-size:14px; border:1.5px solid var(--border-strong); border-radius:var(--radius-sm); background:var(--surface); font-family:var(--font-body); color:var(--text-1); outline:none;">
+          <option value="">Todas</option>
+          <option *ngFor="let c of categorias" [value]="c.id">{{ c.icon }} {{ c.nombre }}</option>
+        </select>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:2px;">
+        <label style="font-size:11px; font-weight:600; color:var(--text-2);">Tarjeta</label>
+        <select [(ngModel)]="filtroTarjetaId" name="filtroTarjetaId"
+          style="min-height:40px; padding:10px 12px; font-size:14px; border:1.5px solid var(--border-strong); border-radius:var(--radius-sm); background:var(--surface); font-family:var(--font-body); color:var(--text-1); outline:none;">
+          <option value="">Todas</option>
+          <option *ngFor="let t of tarjetas" [value]="t.id">{{ t.nombre }} ({{ t.ultimo4 }})</option>
+        </select>
+      </div>
+      <button type="button" class="btn btn-primary btn-md" (click)="aplicarFiltro()">Filtrar</button>
+      <button *ngIf="filtroActivo" type="button" class="btn btn-secondary btn-md" (click)="limpiarFiltro()">Limpiar</button>
+    </div>
+
     <div *ngIf="hogarId && !gastos.length" class="no-hogar">
       <h3>Todavía no cargaste gastos</h3>
       <p>Registrá tu primer gasto para empezar a controlar tus finanzas.</p>
@@ -137,6 +176,13 @@ export class GastosComponent implements OnInit {
 
   form: { descripcion: string; monto: number; tipo: 'PUNTUAL' | 'RECURRENTE' | 'INDEFINIDO'; fechaInicio: string; cuotasTotales: number; tarjetaId: string; categoriaId: string } = { descripcion: '', monto: 0, tipo: 'PUNTUAL', fechaInicio: '', cuotasTotales: 0, tarjetaId: '', categoriaId: '' };
 
+  filtroDesde = '';
+  filtroHasta = '';
+  filtroTipo = '';
+  filtroCategoriaId = '';
+  filtroTarjetaId = '';
+  filtroActivo = false;
+
   ngOnInit() {
     this.hogarId = localStorage.getItem('hogarId') || '';
     if (this.hogarId) this.cargarDatos();
@@ -149,6 +195,28 @@ export class GastosComponent implements OnInit {
     this.gastoService.listarPorHogar(this.hogarId).subscribe(g => {
       this.gastos = g;
     });
+  }
+
+  aplicarFiltro() {
+    if (!this.hogarId) return;
+    this.filtroActivo = true;
+    this.gastoService.listarPorFiltros(this.hogarId, {
+      desde: this.filtroDesde || undefined,
+      hasta: this.filtroHasta || undefined,
+      tipo: this.filtroTipo || undefined,
+      categoriaId: this.filtroCategoriaId || undefined,
+      tarjetaId: this.filtroTarjetaId || undefined,
+    }).subscribe(g => this.gastos = g);
+  }
+
+  limpiarFiltro() {
+    this.filtroDesde = '';
+    this.filtroHasta = '';
+    this.filtroTipo = '';
+    this.filtroCategoriaId = '';
+    this.filtroTarjetaId = '';
+    this.filtroActivo = false;
+    this.cargarDatos();
   }
 
   onTipoChange() {

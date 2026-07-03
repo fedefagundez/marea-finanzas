@@ -54,6 +54,19 @@ import { toInputDate, validarDescripcion, validarMontoPositivo } from '../../cor
       </div>
     </form>
 
+    <div *ngIf="hogarId" style="display:flex; align-items:flex-end; gap:12px; flex-wrap:wrap; margin-bottom:16px;">
+      <div style="display:flex; flex-direction:column; gap:2px;">
+        <label style="font-size:11px; font-weight:600; color:var(--text-2);">Desde</label>
+        <app-date-picker [(ngModel)]="filtroDesde" name="filtroDesde" placeholder="dd/mm/aaaa" style="width:140px;"></app-date-picker>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:2px;">
+        <label style="font-size:11px; font-weight:600; color:var(--text-2);">Hasta</label>
+        <app-date-picker [(ngModel)]="filtroHasta" name="filtroHasta" placeholder="dd/mm/aaaa" style="width:140px;"></app-date-picker>
+      </div>
+      <button type="button" class="btn btn-primary btn-md" (click)="aplicarFiltro()">Filtrar</button>
+      <button *ngIf="filtroActivo" type="button" class="btn btn-secondary btn-md" (click)="limpiarFiltro()">Limpiar</button>
+    </div>
+
     <div *ngIf="hogarId && !ingresos.length" class="no-hogar">
       <h3>Todavía no cargaste ingresos</h3>
       <p>Registrá tu primer ingreso para empezar a ver tu balance.</p>
@@ -88,6 +101,9 @@ export class IngresosComponent implements OnInit {
   ingresos: Ingreso[] = [];
   editando = false;
   editId = '';
+  filtroDesde = '';
+  filtroHasta = '';
+  filtroActivo = false;
 
   form: { descripcion: string; monto: number; tipo: 'PUNTUAL' | 'RECURRENTE' | 'INDEFINIDO'; fechaInicio: string; fechaFin: string } = { descripcion: '', monto: 0, tipo: 'PUNTUAL', fechaInicio: '', fechaFin: '' };
 
@@ -102,6 +118,21 @@ export class IngresosComponent implements OnInit {
       console.log('[Ingresos] datos recibidos:', i);
       this.ingresos = i;
     });
+  }
+
+  aplicarFiltro() {
+    if (!this.hogarId) return;
+    this.filtroActivo = true;
+    this.ingresoService.listarPorFiltros(this.hogarId, this.filtroDesde || undefined, this.filtroHasta || undefined).subscribe(i => {
+      this.ingresos = i;
+    });
+  }
+
+  limpiarFiltro() {
+    this.filtroDesde = '';
+    this.filtroHasta = '';
+    this.filtroActivo = false;
+    this.cargarIngresos();
   }
 
   guardar() {
