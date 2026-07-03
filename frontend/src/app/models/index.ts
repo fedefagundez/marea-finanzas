@@ -62,6 +62,8 @@ export interface Gasto {
   cuotasPagadas: number;
   tarjetaId?: string;
   tarjeta?: TarjetaResumen;
+  categoriaId?: string;
+  categoria?: Pick<Categoria, 'id' | 'nombre' | 'icon'>;
   hogarId: string;
   usuarioId: string;
   createdAt: string;
@@ -90,6 +92,23 @@ export interface BalanceMes {
   totalGastos: number;
   balance: number;
   tipo: 'REAL' | 'PROYECTADO';
+}
+
+export interface Categoria {
+  id: string;
+  nombre: string;
+  icon: string;
+  createdAt: string;
+  hogarId?: string | null;
+  usuarioId?: string | null;
+}
+
+export interface DistribucionGasto {
+  categoriaId: string | null;
+  nombre: string;
+  icon: string;
+  total: number;
+  porcentaje: number;
 }
 
 export interface MovimientoReciente {

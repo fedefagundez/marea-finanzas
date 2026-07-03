@@ -73,6 +73,12 @@ import { AuthService } from '../../services/auth.service';
             </svg>
             Metas
           </a>
+          <a class="rail-link" routerLink="/categorias" routerLinkActive="active" (click)="cerrarMenu()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="8.5"/><path d="M12 12V3.5A8.5 8.5 0 0 1 20.5 12H12z"/>
+            </svg>
+            Categorías
+          </a>
           <a class="rail-link" routerLink="/perfil" routerLinkActive="active" (click)="cerrarMenu()">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <circle cx="12" cy="8.5" r="3.5"/><path d="M5 20c1.2-3.8 4-5.5 7-5.5s5.8 1.7 7 5.5"/>

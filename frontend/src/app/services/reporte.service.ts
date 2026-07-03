@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
-import { BalanceMes, Dashboard, Evolucion, MovimientoReciente, Proyeccion } from '../models';
+import { BalanceMes, Dashboard, Evolucion, MovimientoReciente, Proyeccion, DistribucionGasto } from '../models';
 
 @Injectable({ providedIn: 'root' })
 export class ReporteService {
@@ -36,5 +36,9 @@ export class ReporteService {
     return this.http.get<MovimientoReciente[]>(`${this.apiUrl}/hogar/${hogarId}/movimientos-recientes`, {
       params: { limite: limite.toString() }
     });
+  }
+
+  distribucionGastos(hogarId: string): Observable<DistribucionGasto[]> {
+    return this.http.get<DistribucionGasto[]>(`${this.apiUrl}/hogar/${hogarId}/distribucion-gastos`);
   }
 }

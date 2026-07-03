@@ -19,6 +19,7 @@ const gastoBaseSchema = z.object({
   cuotasTotales: z.number().int().positive().optional(),
   cuotasPagadas: z.number().int().min(0).default(0),
   tarjetaId: z.string().uuid().optional(),
+  categoriaId: z.string().uuid().optional(),
 });
 
 const gastoSchema = gastoBaseSchema.refine(data => data.tipo === 'INDEFINIDO' || data.fechaInicio, {
@@ -52,6 +53,7 @@ router.post('/', authMiddleware, async (req: AuthRequest, res, next) => {
         cuotasTotales: data.cuotasTotales,
         cuotasPagadas: data.cuotasPagadas,
         tarjetaId: data.tarjetaId,
+        categoriaId: data.categoriaId,
         hogarId: data.hogarId,
         usuarioId: req.usuarioId!,
       },
@@ -69,7 +71,10 @@ router.get('/hogar/:hogarId', authMiddleware, async (req: AuthRequest, res, next
 
     const gastos = await prisma.gasto.findMany({
       where: { hogarId: req.params.hogarId },
-      include: { tarjeta: { select: { id: true, nombre: true, ultimo4: true } } },
+      include: {
+        tarjeta: { select: { id: true, nombre: true, ultimo4: true } },
+        categoria: { select: { id: true, nombre: true, icon: true } },
+      },
       orderBy: { fechaInicio: 'desc' },
     });
 

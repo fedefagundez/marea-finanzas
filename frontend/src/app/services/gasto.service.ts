@@ -18,6 +18,7 @@ export class GastoService {
     fechaInicio?: string;
     cuotasTotales?: number;
     tarjetaId?: string;
+    categoriaId?: string;
   }): Observable<Gasto> {
     return this.http.post<Gasto>(this.apiUrl, data);
   }

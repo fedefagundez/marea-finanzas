@@ -3,17 +3,17 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { GastoService } from '../../services/gasto.service';
 import { TarjetaService } from '../../services/tarjeta.service';
+import { CategoriaService } from '../../services/categoria.service';
 import { ToastService } from '../../services/toast.service';
 import { ConfirmService } from '../../services/confirm.service';
 import { DatePickerComponent } from '../../components/date-picker/date-picker.component';
-import { ArsCurrencyPipe } from '../../core/pipes/ars-currency.pipe';
-import { Gasto, TarjetaCredito } from '../../models';
+import { Gasto, TarjetaCredito, Categoria } from '../../models';
 import { toInputDate, validarDescripcion, validarMontoPositivo } from '../../core/utils/form-utils';
 
 @Component({
   selector: 'app-gastos',
   standalone: true,
-  imports: [CommonModule, FormsModule, DatePickerComponent, ArsCurrencyPipe],
+  imports: [CommonModule, FormsModule, DatePickerComponent],
   template: `
     <div class="demo-topbar">
       <div>
@@ -50,6 +50,13 @@ import { toInputDate, validarDescripcion, validarMontoPositivo } from '../../cor
           <input type="number" [(ngModel)]="form.cuotasTotales" name="cuotasTotales" placeholder="1" min="1" />
         </div>
         <div class="field">
+          <label>Categoría</label>
+          <select [(ngModel)]="form.categoriaId" name="categoriaId">
+            <option value="">Sin categoría</option>
+            <option *ngFor="let c of categorias" [value]="c.id">{{ c.icon }} {{ c.nombre }}</option>
+          </select>
+        </div>
+        <div class="field">
           <label>Tarjeta</label>
           <select [(ngModel)]="form.tarjetaId" name="tarjetaId">
             <option value="">Sin tarjeta</option>
@@ -76,7 +83,7 @@ import { toInputDate, validarDescripcion, validarMontoPositivo } from '../../cor
 
     <div *ngIf="gastos.length" class="card" style="padding:6px 4px;">
       <table class="tx">
-        <tr><th>Descripción</th><th>Monto</th><th>Tipo</th><th>Fecha</th><th>Cuotas</th><th>Tarjeta</th><th style="text-align:right;">Acciones</th></tr>
+        <tr><th>Descripción</th><th>Monto</th><th>Tipo</th><th>Fecha</th><th>Cuotas</th><th>Categoría</th><th>Tarjeta</th><th style="text-align:right;">Acciones</th></tr>
         <tr *ngFor="let g of gastos">
           <td data-label="Descripción"><div class="tx-name"><span class="tx-icon" style="background:var(--primary-50); color:var(--primary-700);">$</span>{{ g.descripcion || '-' }}</div></td>
           <td data-label="Monto" class="amt-neg">
@@ -96,6 +103,13 @@ import { toInputDate, validarDescripcion, validarMontoPositivo } from '../../cor
             <span *ngIf="!g.cuotasTotales">-</span>
             <button *ngIf="g.cuotasTotales && (g.cuotasPagadas || 0) < g.cuotasTotales" type="button" class="btn btn-secondary btn-sm" (click)="pagarCuota(g.id)">+1</button>
           </td>
+          <td data-label="Categoría">
+            <span *ngIf="g.categoria" style="display:inline-flex; align-items:center; gap:4px;">
+              <span class="cat-icon" style="width:24px;height:24px;font-size:14px;background:var(--n-100);color:var(--n-600);">{{ g.categoria.icon }}</span>
+              {{ g.categoria.nombre }}
+            </span>
+            <span *ngIf="!g.categoria">-</span>
+          </td>
           <td data-label="Tarjeta">{{ g.tarjeta?.nombre || '-' }}</td>
           <td data-label="Acciones" style="text-align:right;">
             <button type="button" class="btn btn-ghost btn-sm" (click)="editar(g)">Editar</button>
@@ -109,17 +123,19 @@ import { toInputDate, validarDescripcion, validarMontoPositivo } from '../../cor
 export class GastosComponent implements OnInit {
   private gastoService = inject(GastoService);
   private tarjetaService = inject(TarjetaService);
+  private categoriaService = inject(CategoriaService);
   private toast = inject(ToastService);
   private confirmService = inject(ConfirmService);
 
   tarjetas: TarjetaCredito[] = [];
+  categorias: Categoria[] = [];
   gastos: Gasto[] = [];
   hogarId = '';
   editando = false;
   editId = '';
   gastoOriginal: Gasto | null = null;
 
-  form: { descripcion: string; monto: number; tipo: 'PUNTUAL' | 'RECURRENTE' | 'INDEFINIDO'; fechaInicio: string; cuotasTotales: number; tarjetaId: string } = { descripcion: '', monto: 0, tipo: 'PUNTUAL', fechaInicio: '', cuotasTotales: 0, tarjetaId: '' };
+  form: { descripcion: string; monto: number; tipo: 'PUNTUAL' | 'RECURRENTE' | 'INDEFINIDO'; fechaInicio: string; cuotasTotales: number; tarjetaId: string; categoriaId: string } = { descripcion: '', monto: 0, tipo: 'PUNTUAL', fechaInicio: '', cuotasTotales: 0, tarjetaId: '', categoriaId: '' };
 
   ngOnInit() {
     this.hogarId = localStorage.getItem('hogarId') || '';
@@ -129,8 +145,8 @@ export class GastosComponent implements OnInit {
   cargarDatos() {
     if (!this.hogarId) return;
     this.tarjetaService.listarPorHogar(this.hogarId).subscribe(t => this.tarjetas = t);
+    this.categoriaService.listar(this.hogarId).subscribe(c => this.categorias = c);
     this.gastoService.listarPorHogar(this.hogarId).subscribe(g => {
-      console.log('[Gastos] datos recibidos:', g);
       this.gastos = g;
     });
   }
@@ -175,7 +191,8 @@ export class GastosComponent implements OnInit {
       tipo: this.form.tipo,
       fechaInicio: this.form.fechaInicio || undefined,
       cuotasTotales: this.form.tipo === 'RECURRENTE' ? (this.form.cuotasTotales || undefined) : undefined,
-      tarjetaId: this.form.tarjetaId || undefined
+      tarjetaId: this.form.tarjetaId || undefined,
+      categoriaId: this.form.categoriaId || undefined
     };
     if (this.editando) {
       this.gastoService.actualizar(this.editId, payload).subscribe({
@@ -200,7 +217,8 @@ export class GastosComponent implements OnInit {
       tipo: g.tipo,
       fechaInicio: toInputDate(g.fechaInicio),
       cuotasTotales: g.cuotasTotales || 0,
-      tarjetaId: g.tarjetaId || ''
+      tarjetaId: g.tarjetaId || '',
+      categoriaId: g.categoriaId || ''
     };
   }
 
@@ -212,7 +230,7 @@ export class GastosComponent implements OnInit {
   }
 
   resetForm() {
-    this.form = { descripcion: '', monto: 0, tipo: 'PUNTUAL', fechaInicio: '', cuotasTotales: 0, tarjetaId: '' };
+    this.form = { descripcion: '', monto: 0, tipo: 'PUNTUAL', fechaInicio: '', cuotasTotales: 0, tarjetaId: '', categoriaId: '' };
   }
 
   pagarCuota(id: string) {

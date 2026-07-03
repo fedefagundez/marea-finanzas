@@ -17,6 +17,7 @@ model Usuario {
   ingresos            Ingreso[]
   gastos              Gasto[]
   miembros            MiembroHogar[]
+  categorias          Categoria[]
   passwordResetTokens PasswordResetToken[]
 
   @@map("usuarios")
@@ -45,6 +46,7 @@ model Hogar {
   ingresos   Ingreso[]
   gastos     Gasto[]
   tarjetas   TarjetaCredito[]
+  categorias Categoria[]
 
   @@map("hogares")
 }
@@ -76,6 +78,22 @@ model TarjetaCredito {
   @@map("tarjetas_credito")
 }
 
+model Categoria {
+  id        String   @id @default(uuid())
+  nombre    String
+  icon      String   @default("📂")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  usuarioId String? @map("usuario_id")
+  hogarId   String? @map("hogar_id")
+
+  usuario Usuario? @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  hogar   Hogar?   @relation(fields: [hogarId], references: [id], onDelete: Cascade)
+  gastos  Gasto[]
+
+  @@map("categorias")
+}
+
 model Ingreso {
   id          String   @id @default(uuid())
   descripcion String
@@ -104,13 +122,15 @@ model Gasto {
   cuotasPagadas  Int      @default(0) @map("cuotas_pagadas")
   createdAt      DateTime @default(now()) @map("created_at")
 
-  hogarId   String  @map("hogar_id")
-  usuarioId String  @map("usuario_id")
-  tarjetaId String? @map("tarjeta_id")
+  hogarId     String  @map("hogar_id")
+  usuarioId   String  @map("usuario_id")
+  tarjetaId   String? @map("tarjeta_id")
+  categoriaId String? @map("categoria_id")
 
-  hogar   Hogar           @relation(fields: [hogarId], references: [id], onDelete: Cascade)
-  usuario Usuario         @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
-  tarjeta TarjetaCredito? @relation(fields: [tarjetaId], references: [id], onDelete: SetNull)
+  hogar     Hogar           @relation(fields: [hogarId], references: [id], onDelete: Cascade)
+  usuario   Usuario         @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  tarjeta   TarjetaCredito? @relation(fields: [tarjetaId], references: [id], onDelete: SetNull)
+  categoria Categoria?      @relation(fields: [categoriaId], references: [id], onDelete: SetNull)
 
   @@map("gastos")
 }
