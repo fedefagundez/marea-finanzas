@@ -54,6 +54,14 @@ import { toInputDate, validarDescripcion, validarMontoPositivo } from '../../cor
       </div>
     </form>
 
+    <div *ngIf="hogarId" style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px;">
+      <button *ngFor="let p of presets" type="button" class="btn btn-sm"
+        [class.btn-primary]="filtroPreset === p.id"
+        [class.btn-secondary]="filtroPreset !== p.id"
+        style="font-size:12px; padding:4px 12px;"
+        (click)="aplicarPreset(p.id)">{{ p.label }}</button>
+    </div>
+
     <div *ngIf="hogarId" style="display:flex; align-items:flex-end; gap:12px; flex-wrap:wrap; margin-bottom:16px;">
       <div style="display:flex; flex-direction:column; gap:2px;">
         <label style="font-size:11px; font-weight:600; color:var(--text-2);">Desde</label>
@@ -104,24 +112,69 @@ export class IngresosComponent implements OnInit {
   filtroDesde = '';
   filtroHasta = '';
   filtroActivo = false;
+  filtroPreset = 'este-mes';
+  readonly presets = [
+    { id: 'este-mes', label: 'Este mes' },
+    { id: 'mes-anterior', label: 'Mes anterior' },
+    { id: 'ultimos-3', label: 'Últ. 3 meses' },
+    { id: 'ultimos-6', label: 'Últ. 6 meses' },
+    { id: 'este-anio', label: 'Este año' },
+  ];
 
   form: { descripcion: string; monto: number; tipo: 'PUNTUAL' | 'RECURRENTE' | 'INDEFINIDO'; fechaInicio: string; fechaFin: string } = { descripcion: '', monto: 0, tipo: 'PUNTUAL', fechaInicio: '', fechaFin: '' };
 
   ngOnInit() {
     this.hogarId = localStorage.getItem('hogarId') || '';
-    if (this.hogarId) this.cargarIngresos();
+    if (this.hogarId) this.aplicarPreset('este-mes');
   }
 
-  cargarIngresos() {
-    if (!this.hogarId) return;
-    this.ingresoService.listarPorHogar(this.hogarId).subscribe(i => {
-      console.log('[Ingresos] datos recibidos:', i);
-      this.ingresos = i;
-    });
+  private calcularPreset(preset: string) {
+    const hoy = new Date();
+    const y = hoy.getFullYear();
+    const m = hoy.getMonth();
+    switch (preset) {
+      case 'este-mes': {
+        const desde = new Date(y, m, 1);
+        const hasta = new Date(y, m + 1, 0);
+        return { desde: desde.toISOString().slice(0, 10), hasta: hasta.toISOString().slice(0, 10) };
+      }
+      case 'mes-anterior': {
+        const desde = new Date(y, m - 1, 1);
+        const hasta = new Date(y, m, 0);
+        return { desde: desde.toISOString().slice(0, 10), hasta: hasta.toISOString().slice(0, 10) };
+      }
+      case 'ultimos-3': {
+        const desde = new Date(y, m - 3, 1);
+        const hasta = hoy;
+        return { desde: desde.toISOString().slice(0, 10), hasta: hasta.toISOString().slice(0, 10) };
+      }
+      case 'ultimos-6': {
+        const desde = new Date(y, m - 6, 1);
+        const hasta = hoy;
+        return { desde: desde.toISOString().slice(0, 10), hasta: hasta.toISOString().slice(0, 10) };
+      }
+      case 'este-anio': {
+        const desde = new Date(y, 0, 1);
+        const hasta = new Date(y, 11, 31);
+        return { desde: desde.toISOString().slice(0, 10), hasta: hasta.toISOString().slice(0, 10) };
+      }
+      default:
+        return { desde: '', hasta: '' };
+    }
+  }
+
+  aplicarPreset(preset: string) {
+    this.filtroPreset = preset;
+    const { desde, hasta } = this.calcularPreset(preset);
+    this.filtroDesde = desde;
+    this.filtroHasta = hasta;
+    this.filtroActivo = true;
+    this.ingresoService.listarPorFiltros(this.hogarId, desde || undefined, hasta || undefined).subscribe(i => this.ingresos = i);
   }
 
   aplicarFiltro() {
     if (!this.hogarId) return;
+    this.filtroPreset = 'personalizado';
     this.filtroActivo = true;
     this.ingresoService.listarPorFiltros(this.hogarId, this.filtroDesde || undefined, this.filtroHasta || undefined).subscribe(i => {
       this.ingresos = i;
@@ -129,10 +182,7 @@ export class IngresosComponent implements OnInit {
   }
 
   limpiarFiltro() {
-    this.filtroDesde = '';
-    this.filtroHasta = '';
-    this.filtroActivo = false;
-    this.cargarIngresos();
+    this.aplicarPreset('este-mes');
   }
 
   guardar() {
@@ -160,12 +210,12 @@ export class IngresosComponent implements OnInit {
     };
     if (this.editando) {
       this.ingresoService.actualizar(this.editId, payload).subscribe({
-        next: () => { this.cancelar(); this.cargarIngresos(); this.toast.show('Ingreso actualizado', 'success'); },
+        next: () => { this.cancelar(); this.aplicarPreset(this.filtroPreset); this.toast.show('Ingreso actualizado', 'success'); },
         error: (err) => this.toast.showApiError(err, 'Error al actualizar')
       });
     } else {
       this.ingresoService.crear({ hogarId: this.hogarId, ...payload }).subscribe({
-        next: () => { this.resetForm(); this.cargarIngresos(); this.toast.show('Ingreso creado', 'success'); },
+        next: () => { this.resetForm(); this.aplicarPreset(this.filtroPreset); this.toast.show('Ingreso creado', 'success'); },
         error: (err) => this.toast.showApiError(err, 'Error al crear')
       });
     }
@@ -196,7 +246,7 @@ export class IngresosComponent implements OnInit {
   async eliminar(id: string) {
     const ok = await this.confirmService.confirm('¿Eliminar este ingreso?');
     if (ok) {
-      this.ingresoService.eliminar(id).subscribe(() => { this.cargarIngresos(); this.toast.show('Ingreso eliminado', 'success'); });
+      this.ingresoService.eliminar(id).subscribe(() => { this.aplicarPreset(this.filtroPreset); this.toast.show('Ingreso eliminado', 'success'); });
     }
   }
 }
