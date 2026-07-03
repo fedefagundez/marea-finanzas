@@ -30,6 +30,7 @@ export const routes: Routes = [
       { path: 'hogares', loadComponent: () => import('./pages/hogares/hogares.component').then(m => m.HogaresComponent) },
       { path: 'perfil', loadComponent: () => import('./pages/perfil/perfil.component').then(m => m.PerfilComponent) },
       { path: 'metas', loadComponent: () => import('./pages/metas/metas.component').then(m => m.MetasComponent) },
+      { path: 'categorias', loadComponent: () => import('./pages/categorias/categorias.component').then(m => m.CategoriasComponent) },
     ]
   },
   { path: '**', redirectTo: '/dashboard' }

@@ -185,6 +185,55 @@ router.get('/hogar/:hogarId/balance-mes', authMiddleware, async (req: AuthReques
   }
 });
 
+router.get('/hogar/:hogarId/distribucion-gastos', authMiddleware, async (req: AuthRequest, res, next) => {
+  try {
+    await verificarMiembro(req.usuarioId!, req.params.hogarId);
+
+    const hogarId = req.params.hogarId;
+    const hoy = new Date();
+    const inicio = startOfMonth(hoy);
+    const fin = endOfMonth(hoy);
+
+    const gastos = await prisma.gasto.findMany({
+      where: { hogarId },
+      include: { categoria: { select: { id: true, nombre: true, icon: true } } },
+    });
+
+    const filtrados = gastos.filter(g => esGastoVigente(g, inicio, fin));
+
+    const agrupado: Record<string, { total: number; categoria: { id: string | null; nombre: string; icon: string } }> = {};
+
+    for (const g of filtrados) {
+      const key = g.categoriaId ?? '__sin_categoria__';
+      if (!agrupado[key]) {
+        agrupado[key] = {
+          total: 0,
+          categoria: g.categoria
+            ? { id: g.categoria.id, nombre: g.categoria.nombre, icon: g.categoria.icon }
+            : { id: null, nombre: 'Sin categoría', icon: '📂' },
+        };
+      }
+      agrupado[key].total += Number(g.monto);
+    }
+
+    const totalGeneral = Object.values(agrupado).reduce((s, v) => s + v.total, 0);
+
+    const resultado = Object.values(agrupado)
+      .map(({ total, categoria }) => ({
+        categoriaId: categoria.id,
+        nombre: categoria.nombre,
+        icon: categoria.icon,
+        total,
+        porcentaje: totalGeneral > 0 ? Math.round((total / totalGeneral) * 100) : 0,
+      }))
+      .sort((a, b) => b.total - a.total);
+
+    res.json(resultado);
+  } catch (error) {
+    next(error);
+  }
+});
+
 router.get('/hogar/:hogarId/movimientos-recientes', authMiddleware, async (req: AuthRequest, res, next) => {
   try {
     await verificarMiembro(req.usuarioId!, req.params.hogarId);

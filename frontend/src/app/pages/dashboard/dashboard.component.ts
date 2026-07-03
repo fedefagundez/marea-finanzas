@@ -5,7 +5,7 @@ import { ReporteService } from '../../services/reporte.service';
 import { AuthService } from '../../services/auth.service';
 import { SelectComponent } from '../../components/select/select.component';
 import { ArsCurrencyPipe } from '../../core/pipes/ars-currency.pipe';
-import { BalanceMes, Dashboard, MovimientoReciente } from '../../models';
+import { BalanceMes, Dashboard, MovimientoReciente, DistribucionGasto } from '../../models';
 
 @Component({
   selector: 'app-dashboard',
@@ -52,11 +52,16 @@ import { BalanceMes, Dashboard, MovimientoReciente } from '../../models';
     <div class="grid-2">
       <div class="card">
         <div class="card-title">Distribución de gastos</div>
-        <div style="display:flex; align-items:center; gap:16px; margin-top:6px;">
-          <div style="width:64px; height:64px; border-radius:50%; background:conic-gradient(var(--primary-500) 0% 42%, var(--secondary-500) 42% 68%, var(--warning-500) 68% 85%, var(--n-300) 85% 100%); flex-shrink:0;"></div>
+        <div *ngIf="!distribucion.length" style="margin-top:10px; font-size:13px; color:var(--text-3);">
+          No hay gastos este mes
+        </div>
+        <div *ngIf="distribucion.length" style="display:flex; align-items:center; gap:16px; margin-top:6px;">
+          <div style="width:64px; height:64px; border-radius:50%; background:{{ donutGradient }}; flex-shrink:0;"></div>
           <div class="donut-legend" style="margin-top:0;">
-            <div class="legend-row"><span class="legend-dot" style="background:var(--primary-500);"></span>Supermercado<span>42%</span></div>
-            <div class="legend-row"><span class="legend-dot" style="background:var(--secondary-500);"></span>Servicios<span>26%</span></div>
+            <div class="legend-row" *ngFor="let d of distribucion; let i = index">
+              <span class="legend-dot" [style.background]="donutColors[i % donutColors.length]"></span>
+              {{ d.icon }} {{ d.nombre }}<span>{{ d.porcentaje }}%</span>
+            </div>
           </div>
         </div>
       </div>
@@ -132,6 +137,13 @@ export class DashboardComponent implements OnInit {
   balanceMes: BalanceMes | null = null;
   balanceMesAnterior: BalanceMes | null = null;
   movimientos: MovimientoReciente[] = [];
+  distribucion: DistribucionGasto[] = [];
+
+  readonly donutColors = [
+    'var(--primary-500)', 'var(--secondary-500)', 'var(--warning-500)',
+    'var(--success-500)', 'var(--danger-500)', 'var(--n-300)',
+    '#8B5CF6', '#EC4899', '#14B8A6', '#F97316',
+  ];
 
   mesSeleccionado = String(new Date().getMonth() + 1).padStart(2, '0');
   anioSeleccionado = new Date().getFullYear();
@@ -164,6 +176,7 @@ export class DashboardComponent implements OnInit {
       this.cargarBalanceMes();
       this.cargarComparacionMesAnterior();
       this.cargarMovimientos();
+      this.cargarDistribucion();
     }
   }
 
@@ -247,5 +260,23 @@ export class DashboardComponent implements OnInit {
         console.error('Error loading movimientos recientes:', err);
       }
     });
+  }
+
+  cargarDistribucion() {
+    if (!this.hogarId) return;
+    this.reporteService.distribucionGastos(this.hogarId).subscribe({
+      next: (d) => this.distribucion = d,
+      error: (err) => console.error('Error loading distribucion:', err),
+    });
+  }
+
+  get donutGradient(): string {
+    if (!this.distribucion.length) return '';
+    const parts = this.distribucion.map((d, i) => {
+      const color = this.donutColors[i % this.donutColors.length];
+      const prev = this.distribucion.slice(0, i).reduce((s, c) => s + c.porcentaje, 0);
+      return `${color} ${prev}% ${prev + d.porcentaje}%`;
+    });
+    return `conic-gradient(${parts.join(', ')})`;
   }
 }
