@@ -16,6 +16,7 @@ model Usuario {
 
   ingresos            Ingreso[]
   gastos              Gasto[]
+  metas               Meta[]
   miembros            MiembroHogar[]
   categorias          Categoria[]
   passwordResetTokens PasswordResetToken[]
@@ -45,6 +46,7 @@ model Hogar {
   miembros   MiembroHogar[]
   ingresos   Ingreso[]
   gastos     Gasto[]
+  metas      Meta[]
   tarjetas   TarjetaCredito[]
   categorias Categoria[]
 
@@ -133,4 +135,23 @@ model Gasto {
   categoria Categoria?      @relation(fields: [categoriaId], references: [id], onDelete: SetNull)
 
   @@map("gastos")
+}
+
+model Meta {
+  id            String   @id @default(uuid())
+  nombre        String
+  montoObjetivo Decimal  @map("monto_objetivo")
+  montoActual   Decimal  @default(0) @map("monto_actual")
+  fechaLimite   DateTime @map("fecha_limite")
+  cuotaMensual  Decimal? @map("cuota_mensual")
+  gastoId       String?  @map("gasto_id")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  hogarId   String @map("hogar_id")
+  usuarioId String @map("usuario_id")
+
+  hogar   Hogar   @relation(fields: [hogarId], references: [id], onDelete: Cascade)
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@map("metas")
 }

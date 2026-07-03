@@ -3,20 +3,11 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ToastService } from '../../services/toast.service';
 import { GastoService } from '../../services/gasto.service';
+import { MetaService } from '../../services/meta.service';
 import { ConfirmService } from '../../services/confirm.service';
 import { DatePickerComponent } from '../../components/date-picker/date-picker.component';
 import { hoyInputDate, validarNombre, validarMontoPositivo } from '../../core/utils/form-utils';
-
-interface Meta {
-  id: string;
-  hogarId: string;
-  nombre: string;
-  montoObjetivo: number;
-  montoActual: number;
-  fechaLimite: string;
-  cuotaMensual?: number;
-  gastoId?: string;
-}
+import { Meta } from '../../models';
 
 @Component({
   selector: 'app-metas',
@@ -117,6 +108,7 @@ interface Meta {
 export class MetasComponent implements OnInit {
   private toast = inject(ToastService);
   private gastoService = inject(GastoService);
+  private metaService = inject(MetaService);
   private confirmService = inject(ConfirmService);
 
   hogarId = '';
@@ -129,31 +121,16 @@ export class MetasComponent implements OnInit {
 
   ngOnInit() {
     this.hogarId = localStorage.getItem('hogarId') || '';
-    this.cargarMetas();
+    if (this.hogarId) this.cargarMetas();
   }
 
   private cargarMetas() {
-    const data = localStorage.getItem('metas');
-    const todas = data ? JSON.parse(data) : [];
-    this.metas = Array.isArray(todas)
-      ? todas.filter((m: Meta) => m.hogarId === this.hogarId)
-      : [];
+    this.metaService.listar(this.hogarId).subscribe(m => this.metas = m);
   }
 
-  private guardar() {
-    const data = localStorage.getItem('metas');
-    const todas: Meta[] = data ? JSON.parse(data) : [];
-    const otras = todas.filter(m => m.hogarId !== this.hogarId);
-    const unicas = new Map<string, Meta>();
-    for (const m of this.metas) {
-      unicas.set(m.id, m);
-    }
-    localStorage.setItem('metas', JSON.stringify([...otras, ...unicas.values()]));
-  }
-
-  private async crearGastoMeta(m: Meta): Promise<string | undefined> {
+  private crearGastoMeta(m: Meta): Promise<string | undefined> {
     const cuota = m.cuotaMensual;
-    if (!this.hogarId || !cuota) return undefined;
+    if (!this.hogarId || !cuota) return Promise.resolve(undefined);
     return new Promise((resolve) => {
       this.gastoService.crear({
         hogarId: this.hogarId,
@@ -168,12 +145,11 @@ export class MetasComponent implements OnInit {
     });
   }
 
-  private async actualizarGastoMeta(m: Meta) {
-    const cuota = m.cuotaMensual;
-    if (!m.gastoId || !cuota) return;
+  private actualizarGastoMeta(m: Meta) {
+    if (!m.gastoId || !m.cuotaMensual) return;
     this.gastoService.actualizar(m.gastoId, {
       descripcion: `Ahorro meta: ${m.nombre}`,
-      monto: cuota,
+      monto: m.cuotaMensual,
       tipo: 'RECURRENTE',
     }).subscribe();
   }
@@ -203,75 +179,86 @@ export class MetasComponent implements OnInit {
       return;
     }
 
-    const meta: Meta = {
-      id: crypto.randomUUID(),
+    const cuota = this.nueva.cuotaMensual > 0 ? this.nueva.cuotaMensual : undefined;
+
+    this.metaService.crear({
       hogarId: this.hogarId,
       nombre: this.nueva.nombre.trim(),
       montoObjetivo: this.nueva.montoObjetivo,
-      montoActual: 0,
       fechaLimite: this.nueva.fechaLimite,
-      cuotaMensual: this.nueva.cuotaMensual > 0 ? this.nueva.cuotaMensual : undefined,
-    };
-
-    if (meta.cuotaMensual) {
-      const gastoId = await this.crearGastoMeta(meta);
-      if (gastoId) meta.gastoId = gastoId;
-    }
-
-    this.metas = [...this.metas, meta];
-    this.guardar();
-    this.nueva = { nombre: '', montoObjetivo: 0, fechaLimite: '', cuotaMensual: 0 };
-    this.toast.show('Meta creada', 'success');
+      cuotaMensual: cuota,
+    }).subscribe({
+      next: async (meta) => {
+        if (cuota) {
+          const gastoId = await this.crearGastoMeta(meta);
+          if (gastoId) {
+            this.metaService.actualizar(meta.id, { gastoId }).subscribe(m => {
+              this.metas = [m, ...this.metas.filter(x => x.id !== m.id)];
+            });
+          }
+        }
+        this.metas = [meta, ...this.metas];
+        this.nueva = { nombre: '', montoObjetivo: 0, fechaLimite: '', cuotaMensual: 0 };
+        this.toast.show('Meta creada', 'success');
+      },
+      error: () => this.toast.show('Error al crear meta', 'error'),
+    });
   }
 
   async eliminarMeta(id: string) {
     const ok = await this.confirmService.confirm('¿Eliminar esta meta? También se eliminará el gasto recurrente asociado si lo tiene.');
     if (!ok) return;
+
     const meta = this.metas.find(m => m.id === id);
-    if (meta) this.eliminarGastoMeta(meta);
-    this.metas = this.metas.filter(m => m.id !== id);
-    this.guardar();
-    this.toast.show('Meta eliminada', 'success');
+    if (meta?.gastoId) this.eliminarGastoMeta(meta);
+
+    this.metaService.eliminar(id).subscribe({
+      next: () => {
+        this.metas = this.metas.filter(m => m.id !== id);
+        this.toast.show('Meta eliminada', 'success');
+      },
+      error: () => this.toast.show('Error al eliminar meta', 'error'),
+    });
   }
 
-  async actualizarCuota(m: Meta) {
-    const idx = this.metas.findIndex(x => x.id === m.id);
-    if (idx === -1) return;
-
+  actualizarCuota(m: Meta) {
     if (!m.cuotaMensual || m.cuotaMensual <= 0) {
-      if (m.gastoId) {
-        this.eliminarGastoMeta(m);
-      }
-      this.metas[idx] = { ...m, cuotaMensual: undefined, gastoId: undefined };
-      this.metas = [...this.metas];
-      this.guardar();
-      this.toast.show('Cuota mensual eliminada', 'success');
+      if (m.gastoId) this.eliminarGastoMeta(m);
+      this.metaService.actualizar(m.id, { cuotaMensual: null, gastoId: null }).subscribe(m2 => {
+        this.metas = this.metas.map(x => x.id === m2.id ? m2 : x);
+        this.toast.show('Cuota mensual eliminada', 'success');
+      });
       return;
     }
 
+    const update = () => {
+      this.metaService.actualizar(m.id, { cuotaMensual: m.cuotaMensual!, gastoId: m.gastoId }).subscribe(m2 => {
+        this.metas = this.metas.map(x => x.id === m2.id ? m2 : x);
+        this.toast.show('Cuota mensual actualizada', 'success');
+      });
+    };
+
     if (m.gastoId) {
-      await this.actualizarGastoMeta(m);
+      this.actualizarGastoMeta(m);
+      update();
     } else {
-      const gastoId = await this.crearGastoMeta(m);
-      if (gastoId) {
-        this.metas[idx] = { ...m, gastoId };
-        this.metas = [...this.metas];
-      }
+      this.crearGastoMeta(m).then(gastoId => {
+        if (gastoId) m.gastoId = gastoId;
+        update();
+      });
     }
-    this.guardar();
-    this.toast.show('Cuota mensual actualizada', 'success');
   }
 
   agregarAhorro(m: Meta) {
     const monto = this.montoAhorro[m.id] || 0;
     if (monto <= 0) return;
-    const idx = this.metas.findIndex(x => x.id === m.id);
-    if (idx === -1) return;
-    this.metas[idx] = { ...m, montoActual: Math.min(m.montoActual + monto, m.montoObjetivo) };
-    this.metas = [...this.metas];
-    this.montoAhorro[m.id] = 0;
-    this.guardar();
-    this.toast.show('Ahorro registrado', 'success');
+
+    const nuevoActual = Math.min(m.montoActual + monto, m.montoObjetivo);
+    this.metaService.actualizar(m.id, { montoActual: nuevoActual }).subscribe(m2 => {
+      this.metas = this.metas.map(x => x.id === m2.id ? m2 : x);
+      this.montoAhorro[m.id] = 0;
+      this.toast.show('Ahorro registrado', 'success');
+    });
   }
 
   getPorcentaje(m: Meta): number {

@@ -64,7 +64,7 @@ frontend/src/app/
 │   ├── hogares/        # CRUD hogares, invitaciones, tarjetas
 │   ├── ingresos/       # CRUD ingresos, filtros, chips predefinidos
 │   ├── login/ / register/ / forgot-password/ / reset-password/
-│   ├── metas/          # Metas de ahorro (localStorage + sync con backend como gasto recurrente)
+│   ├── metas/          # Metas de ahorro (backend CRUD + sync gasto recurrente)
 │   └── perfil/
 ├── services/
 │   ├── auth.service.ts / categoria.service.ts / gasto.service.ts / hogar.service.ts
@@ -78,12 +78,16 @@ frontend/src/app/
 ## PRISMA MODELS
 ```
 Usuario:          id(uuid), username(unique), email(unique), passwordHash, createdAt
+→ Meta[]
 PasswordResetToken: id(uuid), token(unique), expiresAt, used(bool), usuarioId → Usuario(cascade)
 Hogar:            id(uuid), nombre, tokenInvitacion(unique?), createdAt
 MiembroHogar:     id(uuid), usuarioId → Usuario, hogarId → Hogar, rol(ADMIN|MIEMBRO), joinedAt
                   UNIQUE(usuarioId, hogarId)
 TarjetaCredito:   id(uuid), nombre, ultimo4, hogarId → Hogar
 Categoria:        id(uuid), nombre, icon(default📂), usuarioId?(→Usuario), hogarId?(→Hogar)
+Meta:             id(uuid), nombre, montoObjetivo(Decimal), montoActual(Decimal default0),
+                  fechaLimite(DateTime), cuotaMensual(Decimal?), gastoId(String?),
+                  hogarId → Hogar, usuarioId → Usuario
                   null/null = global category
 Ingreso:          id(uuid), descripcion, monto(Decimal), tipo(PUNTUAL|RECURRENTE|INDEFINIDO),
                   fechaInicio?, fechaFin?, hogarId → Hogar, usuarioId → Usuario
@@ -149,6 +153,14 @@ Gasto:            id(uuid), descripcion, monto(Decimal), tipo, fechaInicio?, cuo
 | PUT | `/:id` | Solo user-created |
 | DELETE | `/:id` | Solo user-created |
 
+### Metas `/api/metas` (auth)
+| Método | Endpoint | Descripción |
+|--------|----------|-------------|
+| POST | `/` | Crear meta |
+| GET | `/hogar/:hogarId` | Listar metas del hogar |
+| PUT | `/:id` | Actualizar (montoActual, cuotaMensual, gastoId, etc.) |
+| DELETE | `/:id` | Eliminar |
+
 ### Reportes `/api/reportes` (auth)
 | Método | Endpoint | Descripción |
 |--------|----------|-------------|
@@ -174,7 +186,7 @@ Gasto:            id(uuid), descripcion, monto(Decimal), tipo, fechaInicio?, cuo
 | `/gastos` | GastosComponent | MainLayout | Sí |
 | `/hogares` | HogaresComponent | MainLayout | Sí |
 | `/categorias` | CategoriasComponent | MainLayout | Sí |
-| `/metas` | MetasComponent | MainLayout | Sí |
+| `/metas` | MetasComponent | MainLayout | Sí | CRUD de metas con backend, cuota mensual opcional como gasto recurrente |
 | `/perfil` | PerfilComponent | MainLayout | Sí |
 | `**` | → redirect `/dashboard` | | |
 
@@ -232,7 +244,6 @@ Nota: `.card:has(table.tx){overflow-x:auto}` está SIEMPRE activo (global), no s
 ---
 
 ## KNOWN DEBT / CONSTRAINTS
-- Metas sin modelo backend (solo localStorage + gasto synced)
 - Sin tests unitarios/e2e
 - SQLite en dev (target PostgreSQL)
 - Sin auto-refresh en interceptor (401 → logout directo)

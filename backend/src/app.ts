@@ -9,6 +9,7 @@ import gastoRoutes from './routes/gasto.js';
 import tarjetaRoutes from './routes/tarjeta.js';
 import reporteRoutes from './routes/reporte.js';
 import categoriaRoutes from './routes/categoria.js';
+import metaRoutes from './routes/meta.js';
 
 const app = express();
 
@@ -22,6 +23,7 @@ app.use('/api/gastos', gastoRoutes);
 app.use('/api/tarjetas', tarjetaRoutes);
 app.use('/api/reportes', reporteRoutes);
 app.use('/api/categorias', categoriaRoutes);
+app.use('/api/metas', metaRoutes);
 
 app.use(errorMiddleware);
 
