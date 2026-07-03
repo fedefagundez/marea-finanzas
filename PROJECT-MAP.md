@@ -1,401 +1,246 @@
-# Mapa del Proyecto — Sistema de Economía del Hogar (Marea)
+# PROJECT MAP — Marea Finanzas del Hogar
 
-> Buffer de contexto para asistencia de IA. Este documento resume arquitectura, estructura, modelos, endpoints, flujos y reglas de negocio del proyecto.
-
----
-
-## 1. Resumen Ejecutivo
-
-Aplicación web para gestión financiera doméstica multiusuario. Permite registrar ingresos y gastos personales/hogareños, proyectar balances futuros, administrar tarjetas de crédito, crear metas de ahorro e invitar miembros a un hogar compartido.
-
-- **Nombre en pantalla:** Marea — Finanzas del hogar
-- **Frontend:** Angular 19 (standalone components, signals, HTTP interceptors)
-- **Backend:** Node.js + Express + TypeScript + Prisma
-- **Base de datos:** SQLite en desarrollo (schema diseñado para PostgreSQL)
-- **Autenticación:** JWT (access token 15 min, refresh token 7 días) + bcrypt
-- **Diseño:** Sistema de diseño Marea (turquesa/cian, modo claro/oscuro, fuentes Sora/Inter/JetBrains Mono)
+> ⚠️ **EXCLUSIVO PARA IA.** Este archivo es contexto para asistentes de IA. No es documentación para humanos. Contiene la estructura, reglas y decisiones del proyecto en formato denso. Léelo completo antes de sugerir o ejecutar cambios.
 
 ---
 
-## 2. Arquitectura General
-
-```
-┌─────────────────────────┐      HTTP/REST      ┌─────────────────────────┐      Prisma       ┌─────────────┐
-│   Angular SPA (4200)    │ ◄──────────────────► │  Node.js API (3000)     │ ◄───────────────► │   SQLite    │
-│  sistema-economia-hogar │                      │  sistema-economia-hogar │                   │   dev.db    │
-│      /frontend          │                      │      /backend           │                   │             │
-└─────────────────────────┘                      └─────────────────────────┘                   └─────────────┘
-```
-
-- CORS habilitado desde `FRONTEND_URL`.
-- Tokens guardados en `localStorage`.
-- `hogarId` seleccionado guardado en `localStorage`.
-- Envío de correos: Nodemailer; en desarrollo usa cuenta Ethereal con URL de preview en consola.
+## TECH STACK
+- Frontend: Angular 19 (standalone components, signals, inject(), inline templates, es-AR locale)
+- Backend: Node.js + Express + TypeScript
+- ORM: Prisma (SQLite dev, schema ready for PostgreSQL)
+- Auth: JWT (access 15m, refresh 7d) + bcrypt (12 rounds)
+- UI: "Marea" design system (Cyan #06B6D4, Sora/Inter/JetBrains Mono, light/dark via `data-theme` on `<body>`)
+- Charts: Chart.js 4.4.4 + ng2-charts 6.0.1 + chartjs-plugin-annotation
+- Date picker: flatpickr via ControlValueAccessor
 
 ---
 
-## 3. Estructura de Carpetas
-
+## BACKEND STRUCTURE
 ```
-sistema-economia-hogar/
-├── backend/
-│   ├── src/
-│   │   ├── app.ts                 # Configura Express, middlewares y rutas
-│   │   ├── index.ts               # Entry point: conecta DB y levanta servidor
-│   │   ├── config/index.ts        # Variables de entorno (.env)
-│   │   ├── lib/prisma.ts          # Instancia de PrismaClient
-│   │   ├── middlewares/
-│   │   │   ├── auth.ts            # authMiddleware + AuthRequest
-│   │   │   └── error.ts           # AppError + errorMiddleware (Zod)
-│   │   ├── routes/
-│   │   │   ├── auth.ts            # /api/auth/*
-│   │   │   ├── hogar.ts           # /api/hogares/*
-│   │   │   ├── ingreso.ts         # /api/ingresos/*
-│   │   │   ├── gasto.ts           # /api/gastos/*
-│   │   │   ├── tarjeta.ts         # /api/tarjetas/*
-│   │   │   └── reporte.ts         # /api/reportes/*
-│   │   └── services/
-│   │       └── mail.service.ts    # Envío de recuperación de contraseña
-│   ├── prisma/schema.prisma       # Modelos de datos
-│   ├── .env                       # Configuración local
-│   └── package.json
-│
-├── frontend/
-│   ├── src/
-│   │   ├── app/
-│   │   │   ├── app.component.ts
-│   │   │   ├── app.config.ts      # Providers: router, HTTP client, locale es-AR
-│   │   │   ├── app.routes.ts      # Definición de rutas
-│   │   │   ├── components/        # UI reutilizable
-│   │   │   │   ├── confirm-modal/
-│   │   │   │   ├── date-picker/   # flatpickr + ControlValueAccessor
-│   │   │   │   ├── select/
-│   │   │   │   ├── select-hogar/
-│   │   │   │   └── toast/
-│   │   │   ├── core/services/
-│   │   │   │   └── theme.service.ts
-│   │   │   ├── guards/auth.guard.ts
-│   │   │   ├── interceptors/auth.interceptor.ts
-│   │   │   ├── layout/
-│   │   │   │   └── main-layout/   # Shell con rail de navegación
-│   │   │   ├── models/index.ts    # Interfaces TypeScript
-│   │   │   ├── pages/
-│   │   │   │   ├── dashboard/
-│   │   │   │   ├── gastos/
-│   │   │   │   ├── hogares/
-│   │   │   │   ├── ingresos/
-│   │   │   │   ├── login/
-│   │   │   │   ├── metas/         # Metas de ahorro (localStorage + gastos)
-│   │   │   │   ├── perfil/
-│   │   │   │   ├── register/
-│   │   │   │   ├── forgot-password/
-│   │   │   │   └── reset-password/
-│   │   │   └── services/          # Servicios API
-│   │   │       ├── auth.service.ts
-│   │   │       ├── gasto.service.ts
-│   │   │       ├── hogar.service.ts
-│   │   │       ├── ingreso.service.ts
-│   │   │       ├── reporte.service.ts
-│   │   │       ├── tarjeta.service.ts
-│   │   │       ├── toast.service.ts
-│   │   │       └── confirm.service.ts
-│   │   ├── environments/
-│   │   ├── index.html
-│   │   ├── main.ts
-│   │   └── styles.css             # Design tokens Marea + responsive
-│   ├── angular.json
-│   └── package.json
-│
-├── diseno.md                      # Documentación de diseño original
-├── sistema.md                     # Requerimientos funcionales/no funcionales
-├── PROMPT-MAREA-CLAUDE-v2.md      # Guía de aplicación del diseño Marea
-└── PROJECT-MAP.md                 # Este archivo
+backend/src/
+├── app.ts              # Express setup: CORS (FRONTEND_URL), json(), routes, error middleware
+├── index.ts            # Entry: Prisma connect, start server, graceful shutdown
+├── config/index.ts     # .env vars: PORT, JWT_SECRET, JWT_REFRESH_SECRET, SMTP_*
+├── lib/
+│   ├── prisma.ts       # PrismaClient singleton
+│   ├── auth.ts         # verificarMiembro(usuarioId, hogarId) -> { id, rol, hogar }
+│   ├── calculos.ts     # esIngresoVigente(), esGastoVigente() – date-range logic per tipo
+│   └── serializers.ts  # serializeDecimal() – Decimal → number
+├── middlewares/
+│   ├── auth.ts         # authMiddleware: Bearer JWT → req.usuarioId
+│   └── error.ts        # AppError class + errorMiddleware (handles AppError & ZodError)
+├── routes/
+│   ├── auth.ts         # /api/auth
+│   ├── hogar.ts        # /api/hogares
+│   ├── ingreso.ts      # /api/ingresos
+│   ├── gasto.ts        # /api/gastos
+│   ├── tarjeta.ts      # /api/tarjetas
+│   ├── categoria.ts    # /api/categorias
+│   └── reporte.ts      # /api/reportes
+└── services/
+    └── mail.service.ts # Nodemailer (Ethereal fallback)
+```
+
+## FRONTEND STRUCTURE
+```
+frontend/src/app/
+├── app.component.ts / app.config.ts / app.routes.ts
+├── components/
+│   ├── confirm-modal/  # Global confirm dialog (returns Promise<boolean>)
+│   ├── date-picker/    # flatpickr wrapper (ControlValueAccessor)
+│   ├── evolution-chart/ # Line chart: 13 months (6 past + current + 6 future), dashed projection, annotation divider
+│   ├── select/         # Custom dropdown
+│   ├── select-hogar/   # Household picker variant
+│   └── toast/          # Global notification container (signals)
+├── core/services/theme.service.ts
+├── guards/auth.guard.ts
+├── interceptors/auth.interceptor.ts  # Attaches Bearer token; on 401 → logout
+├── layout/main-layout/  # Shell: sidebar rail + mobile header + <router-outlet>
+├── models/index.ts      # All TypeScript interfaces (must mirror Prisma)
+├── pages/
+│   ├── categorias/     # CRUD categorías con emoji picker
+│   ├── dashboard/      # Resumen, evolución, distribución, balance por mes, movimientos recientes
+│   ├── gastos/         # CRUD gastos con cuotas, filtros, chips predefinidos
+│   ├── hogares/        # CRUD hogares, invitaciones, tarjetas
+│   ├── ingresos/       # CRUD ingresos, filtros, chips predefinidos
+│   ├── login/ / register/ / forgot-password/ / reset-password/
+│   ├── metas/          # Metas de ahorro (localStorage + sync con backend como gasto recurrente)
+│   └── perfil/
+├── services/
+│   ├── auth.service.ts / categoria.service.ts / gasto.service.ts / hogar.service.ts
+│   ├── ingreso.service.ts / reporte.service.ts / tarjeta.service.ts
+│   └── toast.service.ts / confirm.service.ts
+└── styles.css          # Design tokens + responsive
 ```
 
 ---
 
-## 4. Modelo de Datos (Prisma)
-
-**Datasource actual:** SQLite (`provider = "sqlite"`).
-
-### Entidades
-
-| Modelo | Descripción | Campos clave |
-|--------|-------------|--------------|
-| `Usuario` | Cuenta de usuario | id, username (unique), email (unique), passwordHash |
-| `PasswordResetToken` | Tokens de recuperación | token (unique), expiresAt, used, usuarioId |
-| `Hogar` | Grupo familiar/económico | id, nombre, tokenInvitacion (unique) |
-| `MiembroHogar` | Relación usuario-hogar con rol | usuarioId, hogarId, rol (ADMIN/MIEMBRO), joinedAt |
-| `TarjetaCredito` | Tarjetas asociadas a un hogar | id, nombre, ultimo4, hogarId |
-| `Ingreso` | Ingreso puntual/recurrente/indefinido | descripcion, monto (Decimal), tipo, fechaInicio, fechaFin |
-| `Gasto` | Gasto puntual/recurrente/indefinido con cuotas | descripcion, monto (Decimal), tipo, fechaInicio, cuotasTotales, cuotasPagadas, tarjetaId |
-
-### Relaciones
-
-- Un `Usuario` puede tener muchos `MiembroHogar`.
-- Un `Hogar` tiene muchos miembros, ingresos, gastos y tarjetas.
-- `Gasto` opcionalmente referencia una `TarjetaCredito`.
-- `Ingreso` y `Gasto` registran `usuarioId` (quién lo creó) y `hogarId` (a qué hogar pertenece).
+## PRISMA MODELS
+```
+Usuario:          id(uuid), username(unique), email(unique), passwordHash, createdAt
+PasswordResetToken: id(uuid), token(unique), expiresAt, used(bool), usuarioId → Usuario(cascade)
+Hogar:            id(uuid), nombre, tokenInvitacion(unique?), createdAt
+MiembroHogar:     id(uuid), usuarioId → Usuario, hogarId → Hogar, rol(ADMIN|MIEMBRO), joinedAt
+                  UNIQUE(usuarioId, hogarId)
+TarjetaCredito:   id(uuid), nombre, ultimo4, hogarId → Hogar
+Categoria:        id(uuid), nombre, icon(default📂), usuarioId?(→Usuario), hogarId?(→Hogar)
+                  null/null = global category
+Ingreso:          id(uuid), descripcion, monto(Decimal), tipo(PUNTUAL|RECURRENTE|INDEFINIDO),
+                  fechaInicio?, fechaFin?, hogarId → Hogar, usuarioId → Usuario
+Gasto:            id(uuid), descripcion, monto(Decimal), tipo, fechaInicio?, cuotasTotales?,
+                  cuotasPagadas(default0), tarjetaId?(→TarjetaCredito onDelete:SetNull),
+                  categoriaId?(→Categoria onDelete:SetNull), hogarId → Hogar, usuarioId → Usuario
+```
 
 ---
 
-## 5. API REST — Endpoints
+## API REST — ENDPOINTS
 
-### Autenticación (`/api/auth`)
+### Auth `/api/auth` (no auth)
+| Método | Endpoint | Body/Params | Response |
+|--------|----------|-------------|----------|
+| POST | `/register` | { username, email, password } | { token, refreshToken, usuario } |
+| POST | `/login` | { username OR email, password } | { token, refreshToken, usuario } |
+| POST | `/refresh` | { refreshToken } | { token } |
+| GET | `/me` | — | { id, username, email, createdAt } |
+| POST | `/forgot-password` | { email } | Envía email (Ethereal en dev) |
+| POST | `/reset-password` | { token, password } | Mensaje éxito |
 
+### Hogares `/api/hogares` (auth)
+| Método | Endpoint | Auth | Descripción |
+|--------|----------|------|-------------|
+| POST | `/` | — | Crear (creador = ADMIN) |
+| GET | `/` | — | Listar con miembros y tarjetas |
+| GET | `/:id` | Miembro | Detalle |
+| POST | `/:id/invitar` | ADMIN | Devuelve token invitación |
+| POST | `/unirse` | — | { token } → join |
+| DELETE | `/:id` | ADMIN | Eliminar |
+
+### Ingresos `/api/ingresos` (auth)
 | Método | Endpoint | Descripción |
 |--------|----------|-------------|
-| POST | `/register` | Registro; devuelve token, refreshToken y usuario |
-| POST | `/login` | Login por username/email + password |
-| POST | `/refresh` | Renueva access token con refresh token |
-| GET | `/me` | Datos del usuario autenticado |
-| POST | `/forgot-password` | Crea token de recuperación y envía email |
-| POST | `/reset-password` | Valida token y cambia contraseña |
+| POST | `/` | Crear |
+| GET | `/hogar/:hogarId` | `?desde=&hasta=` |
+| PUT | `/:id` | Actualizar |
+| DELETE | `/:id` | Eliminar |
 
-### Hogares (`/api/hogares`)
-
+### Gastos `/api/gastos` (auth)
 | Método | Endpoint | Descripción |
 |--------|----------|-------------|
-| POST | `/` | Crear hogar (creador = ADMIN) |
-| GET | `/` | Listar hogares del usuario con miembros y tarjetas |
-| GET | `/:id` | Detalle de hogar |
-| POST | `/:id/invitar` | Genera/devuelve token de invitación (solo ADMIN) |
-| POST | `/unirse` | Une usuario autenticado a hogar por token |
-| DELETE | `/:id` | Eliminar hogar (solo ADMIN) |
+| POST | `/` | Crear |
+| GET | `/hogar/:hogarId` | `?desde=&hasta=&tipo=&categoriaId=&tarjetaId=` |
+| PUT | `/:id` | Actualizar |
+| PUT | `/:id/pagar-cuota` | Incrementa cuotasPagadas |
+| DELETE | `/:id` | Eliminar |
 
-### Ingresos (`/api/ingresos`)
-
+### Tarjetas `/api/tarjetas` (auth)
 | Método | Endpoint | Descripción |
 |--------|----------|-------------|
-| POST | `/` | Crear ingreso |
-| GET | `/hogar/:hogarId` | Listar ingresos del hogar |
-| PUT | `/:id` | Actualizar ingreso |
-| DELETE | `/:id` | Eliminar ingreso |
+| POST | `/` | Crear |
+| GET | `/hogar/:hogarId` | Listar |
+| PUT | `/:id` | Actualizar |
+| DELETE | `/:id` | Eliminar |
 
-### Gastos (`/api/gastos`)
-
+### Categorías `/api/categorias` (auth)
 | Método | Endpoint | Descripción |
 |--------|----------|-------------|
-| POST | `/` | Crear gasto |
-| GET | `/hogar/:hogarId` | Listar gastos del hogar (incluye tarjeta) |
-| PUT | `/:id` | Actualizar gasto |
-| PUT | `/:id/pagar-cuota` | Incrementa cuotasPagadas en 1 |
-| DELETE | `/:id` | Eliminar gasto |
+| GET | `/` | `?hogarId=` (sin = globales) |
+| POST | `/` | { nombre, icon, hogarId } |
+| PUT | `/:id` | Solo user-created |
+| DELETE | `/:id` | Solo user-created |
 
-### Tarjetas (`/api/tarjetas`)
-
+### Reportes `/api/reportes` (auth)
 | Método | Endpoint | Descripción |
 |--------|----------|-------------|
-| POST | `/` | Crear tarjeta |
-| GET | `/hogar/:hogarId` | Listar tarjetas |
-| PUT | `/:id` | Actualizar tarjeta |
-| DELETE | `/:id` | Eliminar tarjeta |
-
-### Reportes (`/api/reportes`)
-
-| Método | Endpoint | Descripción |
-|--------|----------|-------------|
-| GET | `/hogar/:hogarId/dashboard` | Resumen del mes actual |
-| GET | `/hogar/:hogarId/evolucion?meses=6` | Histórico de balances |
-| GET | `/hogar/:hogarId/proyeccion?meses=3` | Proyección futura |
-| GET | `/hogar/:hogarId/balance-mes?mes=YYYY-MM` | Balance de un mes específico |
-| GET | `/hogar/:hogarId/movimientos-recientes?limite=5` | Últimos ingresos/gastos |
+| GET | `/hogar/:hogarId/dashboard` | Mes actual: ingresos, gastos, balance |
+| GET | `/hogar/:hogarId/evolucion` | `?meses=N` (default6) |
+| GET | `/hogar/:hogarId/proyeccion` | `?meses=N` (default3) solo recurrentes/indefinidos |
+| GET | `/hogar/:hogarId/evolucion-completa` | `?pasado=6&futuro=6` → items con `tipo: REAL|PROYECTADO` |
+| GET | `/hogar/:hogarId/balance-mes` | `?mes=YYYY-MM` |
+| GET | `/hogar/:hogarId/distribucion-gastos` | Mes actual: categoría → { porcentaje, monto } |
+| GET | `/hogar/:hogarId/movimientos-recientes` | `?limite=N` (default5) ingresos+gastos fusionados |
 
 ---
 
-## 6. Frontend — Rutas y Páginas
+## FRONTEND ROUTES
+| Ruta | Componente | Layout | authGuard |
+|------|-----------|--------|-----------|
+| `/login` | LoginComponent | No | No |
+| `/register` | RegisterComponent | No | No |
+| `/forgot-password` | ForgotPasswordComponent | No | No |
+| `/reset-password` | ResetPasswordComponent | No | No (lee ?token=) |
+| `/dashboard` | DashboardComponent | MainLayout | Sí |
+| `/ingresos` | IngresosComponent | MainLayout | Sí |
+| `/gastos` | GastosComponent | MainLayout | Sí |
+| `/hogares` | HogaresComponent | MainLayout | Sí |
+| `/categorias` | CategoriasComponent | MainLayout | Sí |
+| `/metas` | MetasComponent | MainLayout | Sí |
+| `/perfil` | PerfilComponent | MainLayout | Sí |
+| `**` | → redirect `/dashboard` | | |
 
-| Ruta | Componente | Layout | Descripción |
-|------|------------|--------|-------------|
-| `/login` | LoginComponent | No | Inicio de sesión |
-| `/register` | RegisterComponent | No | Registro |
-| `/forgot-password` | ForgotPasswordComponent | No | Solicitud de recuperación |
-| `/reset-password?token=...` | ResetPasswordComponent | No | Nueva contraseña |
-| `/dashboard` | DashboardComponent | Sí | Resumen, balance, movimientos recientes |
-| `/ingresos` | IngresosComponent | Sí | CRUD de ingresos |
-| `/gastos` | GastosComponent | Sí | CRUD de gastos con cuotas |
-| `/hogares` | HogaresComponent | Sí | Gestión de hogares, invitaciones y tarjetas |
-| `/metas` | MetasComponent | Sí | Metas de ahorro (localStorage) |
-| `/perfil` | PerfilComponent | Sí | Datos de usuario |
-
-- Todas las rutas protegidas usan `authGuard`.
-- El `MainLayoutComponent` contiene el rail de navegación, toggle de tema y cierre de sesión.
-- Si no hay `hogarId` en `localStorage`, el dashboard muestra pantalla de bienvenida.
+MainLayout: sidebar rail + mobile header (hamburger) + `<router-outlet>` + theme toggle + logout.
 
 ---
 
-## 7. Reglas de Negocio Clave
+## BUSINESS RULES
 
-### Tipos de movimientos
-
+### Tipos de movimiento
 | Tipo | Ingreso | Gasto |
 |------|---------|-------|
-| `PUNTUAL` | Ocurre una vez en `fechaInicio` | Ocurre una vez en `fechaInicio` |
-| `RECURRENTE` | Mensual entre `fechaInicio` y `fechaFin` | Mensual; admite `cuotasTotales` |
-| `INDEFINIDO` | Mensual desde `fechaInicio` sin fin | Mensual sin fin; no admite cuotas |
+| PUNTUAL | Una vez en fechaInicio | Una vez en fechaInicio |
+| RECURRENTE | Mensual entre fechaInicio y fechaFin | Mensual; admite cuotasTotales |
+| INDEFINIDO | Mensual desde fechaInicio sin fin | Mensual sin fin; NO admite cuotas |
 
-### Gastos con cuotas
+### Cuotas (solo RECURRENTE en Gastos)
+- Monto mensual = monto / cuotasTotales
+- `pagar-cuota` → cuotasPagadas++ hasta cuotasTotales
+- Completado → no cuenta para proyecciones
 
-- `cuotasTotales` solo permitido para `RECURRENTE`.
-- El monto total se divide por cuotas para mostrar el valor mensual.
-- `pagar-cuota` incrementa `cuotasPagadas` hasta alcanzar `cuotasTotales`.
-- Una vez completadas, el gasto recurrente deja de contar para proyecciones.
+### Balances
+- Dashboard: ingresos/gastos vigentes en mes actual
+- Evolución: últimos N meses (incluye puntuales del mes)
+- Proyección: próximos N meses, solo recurrentes/indefinidos vigentes con lógica de cuotas
+- Balance-mes: REAL si pasado/actual, PROYECTADO si futuro
 
-### Cálculo de balances
+### Metas (localStorage key `metas`)
+- Si `cuotaMensual` > 0 → crea/actualiza gasto recurrente "Ahorro meta: {nombre}" en backend
+- Al eliminar meta → elimina gasto asociado
 
-- **Mes actual (`dashboard`):** suma ingresos/gastos vigentes en el mes corriente.
-- **Histórico (`evolucion`):** últimos N meses, incluye puntuales del mes.
-- **Proyección (`proyeccion`):** próximos N meses, **solo recurrentes/indefinidos** vigentes; aplica lógica de cuotas.
-- **Balance mes (`balance-mes`):** REAL si es mes actual/pasado, PROYECTADO si es futuro.
-
-### Autorización
-
-- Cada endpoint de hogar/ingreso/gasto/tarjeta/reporte verifica que el usuario sea miembro del hogar (`verificarMiembro`).
-- Solo `ADMIN` puede invitar miembros o eliminar el hogar.
-
-### Metas de ahorro
-
-- Las metas se almacenan en `localStorage` bajo la clave `metas`.
-- Si se define `cuotaMensual`, se crea/actualiza un gasto recurrente en el backend (`Ahorro meta: <nombre>`).
-- Al eliminar una meta se elimina el gasto recurrente asociado.
+### AuthZ
+- Todo endpoint de hogar/ingreso/gasto/tarjeta/reporte verifica membresía (`verificarMiembro`)
+- Solo ADMIN: invitar miembros, eliminar hogar
 
 ---
 
-## 8. Servicios del Frontend
+## RESPONSIVE BREAKPOINTS
+| Breakpoint | Cambios |
+|------------|---------|
+| ≤900px | Shell a 1 columna (sidebar colapsa) |
+| ≤768px | Sidebar: position fixed (top:57px, left:0, right:0, bottom:0, z-index:99, overflow-y:auto); mobile-header z-index:100; tabla tx: min-width:100%, width:max-content, white-space:nowrap, card overflow-x:auto; filtros extra en Gastos ocultos tras toggle "+ Más filtros" |
+| ≤480px | Tabla tx → block/card layout (thead hidden, td inline-block con data-label); main padding 10px; card padding 12px |
 
-| Servicio | Responsabilidad |
-|----------|-----------------|
-| `AuthService` | Login, register, refresh, forgot/reset password, guardar/leer tokens en localStorage |
-| `HogarService` | CRUD hogares, invitar, unirse |
-| `IngresoService` | CRUD ingresos |
-| `GastoService` | CRUD gastos + `pagarCuota` |
-| `TarjetaService` | CRUD tarjetas |
-| `ReporteService` | Dashboard, evolución, proyección, balance mes, movimientos recientes |
-| `ToastService` | Notificaciones tipo toast (signals) |
-| `ConfirmService` | Modal de confirmación con Promise<boolean> |
-| `ThemeService` | Toggle claro/oscuro con `data-theme` en body |
+Nota: `.card:has(table.tx){overflow-x:auto}` está SIEMPRE activo (global), no solo en breakpoints.
 
 ---
 
-## 9. Componentes UI Compartidos
-
-| Componente | Uso |
-|------------|-----|
-| `app-toast` | Contenedor global de notificaciones |
-| `app-confirm-modal` | Modal de confirmación global |
-| `app-date-picker` | Selector de fecha basado en flatpickr |
-| `app-select` | Dropdown custom reemplaza `<select>` nativo |
-| `app-select-hogar` | Variante del dropdown para hogares (misma implementación) |
+## STORAGE KEYS (localStorage)
+- `token` — JWT access
+- `refreshToken` — JWT refresh
+- `hogarId` — household seleccionado
+- `metas` — ahorro goals array
 
 ---
 
-## 10. Design System — Marea
-
-- **Paleta:** turquesa primario (`#06B6D4`), índigo secundario, semánticos verde/rojo/amarillo, grises fríos con tinte cian.
-- **Fuentes:** Sora (display), Inter (body), JetBrains Mono (monospace/tabular).
-- **Modo oscuro:** activado vía `data-theme="dark"` en `<body>`; tokens CSS cambian superficies y textos.
-- **Clases utilitarias clave:** `.card`, `.btn`, `.field`, `.tx` (tablas), `.badge`, `.balance-card`, `.mini-stat`, `.grid-2`, `.grid-3`, `.no-hogar`.
-- **Responsive:** rail lateral en desktop; menú hamburguesa + rail colapsable en `< 768px`; tablas se transforman en tarjetas en `< 480px`.
-
----
-
-## 11. Variables de Entorno (backend/.env)
-
-```
-DATABASE_URL="file:./dev.db"
-JWT_SECRET="..."
-JWT_REFRESH_SECRET="..."
-PORT=3000
-FRONTEND_URL="http://localhost:4200"
-SMTP_HOST="smtp.example.com"
-SMTP_PORT=587
-SMTP_USER="..."
-SMTP_PASS="..."
-```
-
-- Si no hay SMTP real configurado, los correos de recuperación se envían a Ethereal y la URL de preview se imprime en consola.
-
----
-
-## 12. Scripts Útiles
-
-### Backend
-
-```bash
-npm run dev          # tsx watch src/index.ts
-npm run build        # tsc
-npm run start        # node dist/index.js
-npm run prisma:generate
-npm run prisma:migrate
-npm run prisma:studio
-```
-
-### Frontend
-
-```bash
-npm start            # ng serve
-npm run build        # ng build
-```
-
----
-
-## 13. Consideraciones para la IA
-
-### Qué NO cambiar sin consultar
-
-- La lógica de cálculo de balances en `reporte.ts` es sensible a fechas, cuotas y tipos.
-- El schema de Prisma debe mantenerse alineado con las interfaces de `frontend/src/app/models/index.ts`.
-- Los tipos `RECURRENTE`/`PUNTUAL`/`INDEFINIDO` están hardcodeados en frontend y backend.
-- `hogarId` se guarda en `localStorage`; muchos componentes lo leen en `ngOnInit`.
-
-### Patrones a respetar
-
-- Componentes standalone de Angular; templates inline en `.component.ts`.
-- Uso de `inject()` para servicios.
-- Señales (`signal`) para estado local reactivo (toast, theme, confirm).
-- `ControlValueAccessor` para `app-date-picker`.
-- Manejo de errores vía `errorMiddleware` con `AppError` y `ZodError`.
-
-### Deuda técnica / mejoras conocidas
-
-- El dashboard tiene una gráfica de distribución de gastos hardcodeada (42% supermercado, 26% servicios); no refleja datos reales.
-- Las metas no tienen modelo de datos en backend; viven en `localStorage`.
-- No hay pruebas unitarias/e2e configuradas.
-- El schema apunta a SQLite; en producción debería migrarse a PostgreSQL.
-- No se usa el refresh token automáticamente en el interceptor; ante 401 se hace logout.
-
----
-
-## 14. Flujos de Usuario Principales
-
-### Registro y creación de hogar
-
-```
-Register → Login → Crear hogar → Ser ADMIN → Invitar por token/email
-```
-
-### Registrar un gasto con cuotas
-
-```
-Ir a /gastos → Nuevo gasto → Tipo RECURRENTE → Cuotas N → Guardar
-→ En la tabla se muestra valor mensual y N cuotas
-→ Botón +1 para registrar pago de cuota
-```
-
-### Unirse a un hogar existente
-
-```
-Recibir enlace /unirse?token=... → Login/Register → POST /api/hogares/unirse
-→ Se crea MiembroHogar con rol MIEMBRO
-```
-
-### Ver balance futuro
-
-```
-Dashboard → Balance por mes → seleccionar mes/año futuro
-→ Llama a /api/reportes/hogar/:id/balance-mes?mes=YYYY-MM
-→ Muestra tipo PROYECTADO basado en recurrentes/indefinidos vigentes
-```
+## KNOWN DEBT / CONSTRAINTS
+- Metas sin modelo backend (solo localStorage + gasto synced)
+- Sin tests unitarios/e2e
+- SQLite en dev (target PostgreSQL)
+- Sin auto-refresh en interceptor (401 → logout directo)
+- Tipos PUNTUAL/RECURRENTE/INDEFINIDO hardcodeados en frontend y backend
+- Schema Prisma debe mantenerse alineado con `frontend/src/app/models/index.ts`
+- Componentes standalone (sin NgModules), inject() para DI, signals para estado local reactivo
+- `hogarId` de localStorage se lee en ngOnInit de varios componentes
+- Cálculos de balances en `reporte.ts` son sensibles a fechas, cuotas y tipos
 
 ---
 
