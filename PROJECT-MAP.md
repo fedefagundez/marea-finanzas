@@ -38,7 +38,7 @@ backend/src/
 │   ├── categoria.ts    # /api/categorias
 │   └── reporte.ts      # /api/reportes
 └── services/
-    └── mail.service.ts # Nodemailer (Ethereal fallback)
+    └── mail.service.ts # Resend SDK (consola en dev, API key en prod)
 ```
 
 ## FRONTEND STRUCTURE
@@ -255,4 +255,5 @@ Nota: `.card:has(table.tx){overflow-x:auto}` está SIEMPRE activo (global), no s
 
 ---
 
-*Última actualización: 2026-07-03*
+*Última actualización: 2026-07-03*  
+*Nota: envío de emails con Resend SDK (dev: log por consola, prod: requiere `RESEND_API_KEY` en .env)*
