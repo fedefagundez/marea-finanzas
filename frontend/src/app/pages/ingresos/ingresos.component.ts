@@ -1,6 +1,7 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 import { IngresoService } from '../../services/ingreso.service';
 import { ToastService } from '../../services/toast.service';
 import { ConfirmService } from '../../services/confirm.service';
@@ -13,7 +14,7 @@ import calcularRango from '../../core/utils/date-presets';
 @Component({
   selector: 'app-ingresos',
   standalone: true,
-  imports: [CommonModule, FormsModule, DatePickerComponent],
+  imports: [CommonModule, FormsModule, RouterLink, DatePickerComponent],
   template: `
     <div class="demo-topbar">
       <div>
@@ -77,12 +78,18 @@ import calcularRango from '../../core/utils/date-presets';
       <button *ngIf="filtroActivo" type="button" class="btn btn-secondary btn-md" (click)="limpiarFiltro()">Limpiar</button>
     </div>
 
+    <div *ngIf="!hogarId" class="no-hogar">
+      <h3>Seleccioná un hogar</h3>
+      <p>Necesitás seleccionar o crear un hogar para empezar a registrar ingresos.</p>
+      <button type="button" class="btn btn-primary btn-md" routerLink="/hogares">Ir a hogares</button>
+    </div>
+
     <div *ngIf="hogarId && !ingresos.length" class="no-hogar">
       <h3>Todavía no cargaste ingresos</h3>
       <p>Registrá tu primer ingreso para empezar a ver tu balance.</p>
     </div>
 
-    <div *ngIf="ingresos.length" class="card" style="padding:6px 4px;">
+    <div *ngIf="hogarId && ingresos.length" class="card" style="padding:6px 4px;">
       <table class="tx">
         <tr><th>Descripción</th><th>Monto</th><th>Tipo</th><th>Fecha</th><th style="text-align:right;">Acciones</th></tr>
         <tr *ngFor="let i of ingresos">
@@ -120,13 +127,8 @@ export class IngresosComponent implements OnInit {
   form: { descripcion: string; monto: number; tipo: 'PUNTUAL' | 'RECURRENTE' | 'INDEFINIDO'; fechaInicio: string; fechaFin: string } = { descripcion: '', monto: 0, tipo: 'PUNTUAL', fechaInicio: '', fechaFin: '' };
 
   ngOnInit() {
-    console.log('[Ingresos] ngOnInit llamado');
     this.hogarId = localStorage.getItem('hogarId') || '';
-    console.log('[Ingresos] hogarId:', this.hogarId);
-    if (this.hogarId) {
-      console.log('[Ingresos] tiene hogarId, llamando aplicarPreset');
-      this.aplicarPreset('este-mes');
-    }
+    if (this.hogarId) this.aplicarPreset('este-mes');
   }
 
   aplicarPreset(preset: string) {

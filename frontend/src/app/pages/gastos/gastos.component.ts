@@ -1,6 +1,7 @@
 import { Component, OnInit, HostListener, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 import { GastoService } from '../../services/gasto.service';
 import { TarjetaService } from '../../services/tarjeta.service';
 import { CategoriaService } from '../../services/categoria.service';
@@ -15,7 +16,7 @@ import calcularRango from '../../core/utils/date-presets';
 @Component({
   selector: 'app-gastos',
   standalone: true,
-  imports: [CommonModule, FormsModule, DatePickerComponent],
+  imports: [CommonModule, FormsModule, RouterLink, DatePickerComponent],
   template: `
     <div class="demo-topbar">
       <div>
@@ -126,12 +127,18 @@ import calcularRango from '../../core/utils/date-presets';
       <button *ngIf="filtroActivo" type="button" class="btn btn-secondary btn-md" (click)="limpiarFiltro()">Limpiar</button>
     </div>
 
+    <div *ngIf="!hogarId" class="no-hogar">
+      <h3>Seleccioná un hogar</h3>
+      <p>Necesitás seleccionar o crear un hogar para empezar a registrar gastos.</p>
+      <button type="button" class="btn btn-primary btn-md" routerLink="/hogares">Ir a hogares</button>
+    </div>
+
     <div *ngIf="hogarId && !gastos.length" class="no-hogar">
       <h3>Todavía no cargaste gastos</h3>
       <p>Registrá tu primer gasto para empezar a controlar tus finanzas.</p>
     </div>
 
-    <div *ngIf="gastos.length" class="card" style="padding:6px 4px;">
+    <div *ngIf="hogarId && gastos.length" class="card" style="padding:6px 4px;">
       <table class="tx">
         <tr><th>Descripción</th><th>Monto</th><th>Tipo</th><th>Fecha</th><th>Cuotas</th><th>Categoría</th><th>Tarjeta</th><th style="text-align:right;">Acciones</th></tr>
         <tr *ngFor="let g of gastos">
