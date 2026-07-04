@@ -33,7 +33,7 @@ const publicPath = path.resolve('public');
 app.use(express.static(publicPath));
 
 app.get('/debug-files', (_req, res) => {
-  const listDir = (dir, prefix = '') => {
+  const listDir = (dir: string, prefix = ''): string[] => {
     try {
       return fs.readdirSync(dir, { withFileTypes: true }).flatMap(entry => {
         const full = path.join(dir, entry.name);
