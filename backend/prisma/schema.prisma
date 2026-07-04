@@ -11,6 +11,7 @@ model Usuario {
   id           String   @id @default(uuid())
   username     String   @unique
   email        String   @unique
+  rol          String   @default("USER")
   passwordHash String   @map("password_hash")
   createdAt    DateTime @default(now()) @map("created_at")
 

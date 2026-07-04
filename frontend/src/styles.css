@@ -577,6 +577,57 @@ footer{margin-top:80px; padding-top:24px; border-top:1px solid var(--border); fo
 }
 .flatpickr-current-month .numInputWrapper span.arrowUp:after{border-bottom-color:var(--text-2);}
 .flatpickr-current-month .numInputWrapper span.arrowDown:after{border-top-color:var(--text-2);}
+/* ========================================================
+   MODAL
+   ======================================================== */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(11, 37, 48, 0.55);
+  backdrop-filter: blur(3px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9998;
+  animation: fadeIn .15s ease;
+}
+.modal-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  width: 100%;
+  max-width: 400px;
+  box-shadow: var(--shadow-lg);
+  animation: slideUp .2s ease;
+}
+.modal-title {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 10px;
+  color: var(--text-1);
+}
+.modal-message {
+  font-size: 14px;
+  color: var(--text-2);
+  line-height: 1.5;
+  margin-bottom: 20px;
+}
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 .flatpickr-months .flatpickr-prev-month, .flatpickr-months .flatpickr-next-month{color:var(--text-2); fill:var(--text-2); height:34px; padding:8px 10px;}
 .flatpickr-months .flatpickr-prev-month:hover, .flatpickr-months .flatpickr-next-month:hover{color:var(--accent-strong); fill:var(--accent-strong);}
 .flatpickr-weekdays{background:var(--surface-2);}

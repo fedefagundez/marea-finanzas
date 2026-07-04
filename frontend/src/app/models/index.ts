@@ -2,6 +2,7 @@ export interface Usuario {
   id: string;
   username: string;
   email: string;
+  rol: string;
   createdAt: string;
 }
 

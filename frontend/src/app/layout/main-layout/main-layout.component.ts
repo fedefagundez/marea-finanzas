@@ -85,6 +85,12 @@ import { AuthService } from '../../services/auth.service';
             </svg>
             Perfil
           </a>
+          <a *ngIf="authService.currentUser()?.rol === 'ADMIN'" class="rail-link" routerLink="/admin" routerLinkActive="active" (click)="cerrarMenu()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 3c-2 0-4 1-5 3l-1 4c0 3 2 6 6 9 4-3 6-6 6-9l-1-4c-1-2-3-3-5-3z"/><path d="M12 8a2 2 0 1 0 0 4 2 2 0 0 0 0-4z"/>
+            </svg>
+            Admin
+          </a>
         </div>
 
         <div class="rail-footer">

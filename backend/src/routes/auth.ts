@@ -56,7 +56,7 @@ router.post('/register', asyncHandler(async (req, res) => {
 
   const { token, refreshToken } = generateTokens(usuario.id);
 
-  res.status(201).json({ token, refreshToken, usuario: { id: usuario.id, username: usuario.username, email: usuario.email } });
+  res.status(201).json({ token, refreshToken, usuario: { id: usuario.id, username: usuario.username, email: usuario.email, rol: usuario.rol } });
 }));
 
 router.post('/login', asyncHandler(async (req, res) => {
@@ -78,7 +78,7 @@ router.post('/login', asyncHandler(async (req, res) => {
 
   const { token, refreshToken } = generateTokens(usuario.id);
 
-  res.json({ token, refreshToken, usuario: { id: usuario.id, username: usuario.username, email: usuario.email } });
+  res.json({ token, refreshToken, usuario: { id: usuario.id, username: usuario.username, email: usuario.email, rol: usuario.rol } });
 }));
 
 router.post('/refresh', asyncHandler(async (req, res) => {
@@ -106,7 +106,7 @@ router.post('/refresh', asyncHandler(async (req, res) => {
 router.get('/me', authMiddleware, asyncHandler(async (req: AuthRequest, res) => {
   const usuario = await prisma.usuario.findUnique({
     where: { id: req.usuarioId },
-    select: { id: true, username: true, email: true, createdAt: true },
+    select: { id: true, username: true, email: true, rol: true, createdAt: true },
   });
 
   if (!usuario) {
