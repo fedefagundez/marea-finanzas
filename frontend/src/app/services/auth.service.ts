@@ -53,6 +53,14 @@ export class AuthService {
     this.router.navigate(['/login']);
   }
 
+  cambiarEmail(email: string, password: string) {
+    return this.http.put<{ mensaje: string }>(`${this.apiUrl}/cambiar-email`, { email, password });
+  }
+
+  cambiarContrasenia(passwordActual: string, passwordNueva: string) {
+    return this.http.put<{ mensaje: string }>(`${this.apiUrl}/cambiar-contrasenia`, { passwordActual, passwordNueva });
+  }
+
   isLoggedIn(): boolean {
     return !!this.getToken();
   }
