@@ -9,6 +9,8 @@ import { ConfirmService } from '../../services/confirm.service';
 import { DatePickerComponent } from '../../components/date-picker/date-picker.component';
 import { Gasto, TarjetaCredito, Categoria } from '../../models';
 import { toInputDate, validarDescripcion, validarMontoPositivo } from '../../core/utils/form-utils';
+import { presets } from '../../core/utils/date-presets';
+import calcularRango from '../../core/utils/date-presets';
 
 @Component({
   selector: 'app-gastos',
@@ -96,8 +98,7 @@ import { toInputDate, validarDescripcion, validarMontoPositivo } from '../../cor
       <ng-container *ngIf="!isMobile || filtrosExtraAbierto">
         <div style="display:flex; flex-direction:column; gap:2px;">
           <label style="font-size:11px; font-weight:600; color:var(--text-2);">Tipo</label>
-          <select [(ngModel)]="filtroTipo" name="filtroTipo"
-            style="min-height:40px; padding:10px 12px; font-size:14px; border:1.5px solid var(--border-strong); border-radius:var(--radius-sm); background:var(--surface); font-family:var(--font-body); color:var(--text-1); outline:none;">
+          <select [(ngModel)]="filtroTipo" name="filtroTipo" class="select-filter">
             <option value="">Todos</option>
             <option value="PUNTUAL">Puntual</option>
             <option value="RECURRENTE">Recurrente</option>
@@ -106,16 +107,14 @@ import { toInputDate, validarDescripcion, validarMontoPositivo } from '../../cor
         </div>
         <div style="display:flex; flex-direction:column; gap:2px;">
           <label style="font-size:11px; font-weight:600; color:var(--text-2);">Categoría</label>
-          <select [(ngModel)]="filtroCategoriaId" name="filtroCategoriaId"
-            style="min-height:40px; padding:10px 12px; font-size:14px; border:1.5px solid var(--border-strong); border-radius:var(--radius-sm); background:var(--surface); font-family:var(--font-body); color:var(--text-1); outline:none;">
+          <select [(ngModel)]="filtroCategoriaId" name="filtroCategoriaId" class="select-filter">
             <option value="">Todas</option>
             <option *ngFor="let c of categorias" [value]="c.id">{{ c.icon }} {{ c.nombre }}</option>
           </select>
         </div>
         <div style="display:flex; flex-direction:column; gap:2px;">
           <label style="font-size:11px; font-weight:600; color:var(--text-2);">Tarjeta</label>
-          <select [(ngModel)]="filtroTarjetaId" name="filtroTarjetaId"
-            style="min-height:40px; padding:10px 12px; font-size:14px; border:1.5px solid var(--border-strong); border-radius:var(--radius-sm); background:var(--surface); font-family:var(--font-body); color:var(--text-1); outline:none;">
+          <select [(ngModel)]="filtroTarjetaId" name="filtroTarjetaId" class="select-filter">
             <option value="">Todas</option>
             <option *ngFor="let t of tarjetas" [value]="t.id">{{ t.nombre }} ({{ t.ultimo4 }})</option>
           </select>
@@ -200,13 +199,7 @@ export class GastosComponent implements OnInit {
 
   @HostListener('window:resize')
   onResize() { this.isMobile = window.innerWidth <= 768; }
-  readonly presets = [
-    { id: 'este-mes', label: 'Este mes' },
-    { id: 'mes-anterior', label: 'Mes anterior' },
-    { id: 'ultimos-3', label: 'Últ. 3 meses' },
-    { id: 'ultimos-6', label: 'Últ. 6 meses' },
-    { id: 'este-anio', label: 'Este año' },
-  ];
+  readonly presets = presets;
 
   ngOnInit() {
     this.hogarId = localStorage.getItem('hogarId') || '';
@@ -222,47 +215,12 @@ export class GastosComponent implements OnInit {
     this.categoriaService.listar(this.hogarId).subscribe(c => this.categorias = c);
   }
 
-  private calcularPreset(preset: string) {
-    const hoy = new Date();
-    const y = hoy.getFullYear();
-    const m = hoy.getMonth();
-    switch (preset) {
-      case 'este-mes': {
-        const desde = new Date(y, m, 1);
-        const hasta = new Date(y, m + 1, 0);
-        return { desde: desde.toISOString().slice(0, 10), hasta: hasta.toISOString().slice(0, 10) };
-      }
-      case 'mes-anterior': {
-        const desde = new Date(y, m - 1, 1);
-        const hasta = new Date(y, m, 0);
-        return { desde: desde.toISOString().slice(0, 10), hasta: hasta.toISOString().slice(0, 10) };
-      }
-      case 'ultimos-3': {
-        const desde = new Date(y, m - 3, 1);
-        const hasta = hoy;
-        return { desde: desde.toISOString().slice(0, 10), hasta: hasta.toISOString().slice(0, 10) };
-      }
-      case 'ultimos-6': {
-        const desde = new Date(y, m - 6, 1);
-        const hasta = hoy;
-        return { desde: desde.toISOString().slice(0, 10), hasta: hasta.toISOString().slice(0, 10) };
-      }
-      case 'este-anio': {
-        const desde = new Date(y, 0, 1);
-        const hasta = new Date(y, 11, 31);
-        return { desde: desde.toISOString().slice(0, 10), hasta: hasta.toISOString().slice(0, 10) };
-      }
-      default:
-        return { desde: '', hasta: '' };
-    }
-  }
-
   aplicarPreset(preset: string) {
     this.filtroPreset = preset;
     this.filtroTipo = '';
     this.filtroCategoriaId = '';
     this.filtroTarjetaId = '';
-    const { desde, hasta } = this.calcularPreset(preset);
+    const { desde, hasta } = calcularRango(preset);
     this.filtroDesde = desde;
     this.filtroHasta = hasta;
     this.filtroActivo = true;

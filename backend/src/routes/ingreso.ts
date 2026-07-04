@@ -4,6 +4,7 @@ import { prisma } from '../lib/prisma.js';
 import { verificarMiembro } from '../lib/auth.js';
 import { serializeDecimal } from '../lib/serializers.js';
 import { AppError } from '../middlewares/error.js';
+import { asyncHandler } from '../lib/asyncHandler.js';
 import { authMiddleware, AuthRequest } from '../middlewares/auth.js';
 
 const router = Router();
@@ -29,95 +30,79 @@ const ingresoSchema = ingresoBaseSchema.refine(data => data.tipo === 'INDEFINIDO
 
 const updateIngresoSchema = ingresoBaseSchema.omit({ hogarId: true }).partial();
 
-router.post('/', authMiddleware, async (req: AuthRequest, res, next) => {
-  try {
-    const data = ingresoSchema.parse(req.body);
-    await verificarMiembro(req.usuarioId!, data.hogarId);
+router.post('/', authMiddleware, asyncHandler(async (req: AuthRequest, res) => {
+  const data = ingresoSchema.parse(req.body);
+  await verificarMiembro(req.usuarioId!, data.hogarId);
 
-    const ingreso = await prisma.ingreso.create({
-      data: {
-        descripcion: data.descripcion,
-        monto: data.monto,
-        tipo: data.tipo,
-        fechaInicio: data.fechaInicio,
-        fechaFin: data.fechaFin,
-        hogarId: data.hogarId,
-        usuarioId: req.usuarioId!,
-      },
-    });
+  const ingreso = await prisma.ingreso.create({
+    data: {
+      descripcion: data.descripcion,
+      monto: data.monto,
+      tipo: data.tipo,
+      fechaInicio: data.fechaInicio,
+      fechaFin: data.fechaFin,
+      hogarId: data.hogarId,
+      usuarioId: req.usuarioId!,
+    },
+  });
 
-    res.status(201).json(serializeIngreso(ingreso));
-  } catch (error) {
-    next(error);
+  res.status(201).json(serializeIngreso(ingreso));
+}));
+
+router.get('/hogar/:hogarId', authMiddleware, asyncHandler(async (req: AuthRequest, res) => {
+  await verificarMiembro(req.usuarioId!, req.params.hogarId);
+
+  const { desde, hasta } = req.query;
+
+  const where: { hogarId: string; fechaInicio?: { gte?: Date; lte?: Date } } = {
+    hogarId: req.params.hogarId,
+  };
+
+  if (desde || hasta) {
+    where.fechaInicio = {};
+    if (desde) where.fechaInicio.gte = new Date(desde as string);
+    if (hasta) where.fechaInicio.lte = new Date(hasta as string);
   }
-});
 
-router.get('/hogar/:hogarId', authMiddleware, async (req: AuthRequest, res, next) => {
-  try {
-    await verificarMiembro(req.usuarioId!, req.params.hogarId);
+  const ingresos = await prisma.ingreso.findMany({
+    where,
+    orderBy: { fechaInicio: 'desc' },
+  });
 
-    const { desde, hasta } = req.query;
+  res.json(ingresos.map(serializeIngreso));
+}));
 
-    const where: { hogarId: string; fechaInicio?: { gte?: Date; lte?: Date } } = {
-      hogarId: req.params.hogarId,
-    };
+router.put('/:id', authMiddleware, asyncHandler(async (req: AuthRequest, res) => {
+  const ingreso = await prisma.ingreso.findUnique({ where: { id: req.params.id } });
 
-    if (desde || hasta) {
-      where.fechaInicio = {};
-      if (desde) where.fechaInicio.gte = new Date(desde as string);
-      if (hasta) where.fechaInicio.lte = new Date(hasta as string);
-    }
-
-    const ingresos = await prisma.ingreso.findMany({
-      where,
-      orderBy: { fechaInicio: 'desc' },
-    });
-
-    res.json(ingresos.map(serializeIngreso));
-  } catch (error) {
-    next(error);
+  if (!ingreso) {
+    throw new AppError(404, 'Ingreso no encontrado');
   }
-});
 
-router.put('/:id', authMiddleware, async (req: AuthRequest, res, next) => {
-  try {
-    const ingreso = await prisma.ingreso.findUnique({ where: { id: req.params.id } });
+  await verificarMiembro(req.usuarioId!, ingreso.hogarId);
 
-    if (!ingreso) {
-      throw new AppError(404, 'Ingreso no encontrado');
-    }
+  const data = updateIngresoSchema.parse(req.body);
 
-    await verificarMiembro(req.usuarioId!, ingreso.hogarId);
+  const actualizado = await prisma.ingreso.update({
+    where: { id: req.params.id },
+    data,
+  });
 
-    const data = updateIngresoSchema.parse(req.body);
+  res.json(serializeIngreso(actualizado));
+}));
 
-    const actualizado = await prisma.ingreso.update({
-      where: { id: req.params.id },
-      data,
-    });
+router.delete('/:id', authMiddleware, asyncHandler(async (req: AuthRequest, res) => {
+  const ingreso = await prisma.ingreso.findUnique({ where: { id: req.params.id } });
 
-    res.json(serializeIngreso(actualizado));
-  } catch (error) {
-    next(error);
+  if (!ingreso) {
+    throw new AppError(404, 'Ingreso no encontrado');
   }
-});
 
-router.delete('/:id', authMiddleware, async (req: AuthRequest, res, next) => {
-  try {
-    const ingreso = await prisma.ingreso.findUnique({ where: { id: req.params.id } });
+  await verificarMiembro(req.usuarioId!, ingreso.hogarId);
 
-    if (!ingreso) {
-      throw new AppError(404, 'Ingreso no encontrado');
-    }
+  await prisma.ingreso.delete({ where: { id: req.params.id } });
 
-    await verificarMiembro(req.usuarioId!, ingreso.hogarId);
-
-    await prisma.ingreso.delete({ where: { id: req.params.id } });
-
-    res.json({ mensaje: 'Ingreso eliminado' });
-  } catch (error) {
-    next(error);
-  }
-});
+  res.json({ mensaje: 'Ingreso eliminado' });
+}));
 
 export default router;

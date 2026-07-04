@@ -7,6 +7,8 @@ import { ConfirmService } from '../../services/confirm.service';
 import { DatePickerComponent } from '../../components/date-picker/date-picker.component';
 import { Ingreso } from '../../models';
 import { toInputDate, validarDescripcion, validarMontoPositivo } from '../../core/utils/form-utils';
+import { presets } from '../../core/utils/date-presets';
+import calcularRango from '../../core/utils/date-presets';
 
 @Component({
   selector: 'app-ingresos',
@@ -113,13 +115,7 @@ export class IngresosComponent implements OnInit {
   filtroHasta = '';
   filtroActivo = false;
   filtroPreset = 'este-mes';
-  readonly presets = [
-    { id: 'este-mes', label: 'Este mes' },
-    { id: 'mes-anterior', label: 'Mes anterior' },
-    { id: 'ultimos-3', label: 'Últ. 3 meses' },
-    { id: 'ultimos-6', label: 'Últ. 6 meses' },
-    { id: 'este-anio', label: 'Este año' },
-  ];
+  readonly presets = presets;
 
   form: { descripcion: string; monto: number; tipo: 'PUNTUAL' | 'RECURRENTE' | 'INDEFINIDO'; fechaInicio: string; fechaFin: string } = { descripcion: '', monto: 0, tipo: 'PUNTUAL', fechaInicio: '', fechaFin: '' };
 
@@ -128,44 +124,9 @@ export class IngresosComponent implements OnInit {
     if (this.hogarId) this.aplicarPreset('este-mes');
   }
 
-  private calcularPreset(preset: string) {
-    const hoy = new Date();
-    const y = hoy.getFullYear();
-    const m = hoy.getMonth();
-    switch (preset) {
-      case 'este-mes': {
-        const desde = new Date(y, m, 1);
-        const hasta = new Date(y, m + 1, 0);
-        return { desde: desde.toISOString().slice(0, 10), hasta: hasta.toISOString().slice(0, 10) };
-      }
-      case 'mes-anterior': {
-        const desde = new Date(y, m - 1, 1);
-        const hasta = new Date(y, m, 0);
-        return { desde: desde.toISOString().slice(0, 10), hasta: hasta.toISOString().slice(0, 10) };
-      }
-      case 'ultimos-3': {
-        const desde = new Date(y, m - 3, 1);
-        const hasta = hoy;
-        return { desde: desde.toISOString().slice(0, 10), hasta: hasta.toISOString().slice(0, 10) };
-      }
-      case 'ultimos-6': {
-        const desde = new Date(y, m - 6, 1);
-        const hasta = hoy;
-        return { desde: desde.toISOString().slice(0, 10), hasta: hasta.toISOString().slice(0, 10) };
-      }
-      case 'este-anio': {
-        const desde = new Date(y, 0, 1);
-        const hasta = new Date(y, 11, 31);
-        return { desde: desde.toISOString().slice(0, 10), hasta: hasta.toISOString().slice(0, 10) };
-      }
-      default:
-        return { desde: '', hasta: '' };
-    }
-  }
-
   aplicarPreset(preset: string) {
     this.filtroPreset = preset;
-    const { desde, hasta } = this.calcularPreset(preset);
+    const { desde, hasta } = calcularRango(preset);
     this.filtroDesde = desde;
     this.filtroHasta = hasta;
     this.filtroActivo = true;

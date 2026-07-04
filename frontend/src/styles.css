@@ -158,6 +158,7 @@ section:first-of-type{padding-top:0;}
 .btn:active{transform:scale(.97);}
 .btn-lg{padding:14px 26px; font-size:15px; height:48px;}
 .btn-md{padding:0 20px; font-size:13.5px; height:40px;}
+.select-filter{min-height:40px; padding:10px 12px; font-size:14px; border:1.5px solid var(--border-strong); border-radius:var(--radius-sm); background:var(--surface); font-family:var(--font-body); color:var(--text-1); outline:none;}
 .btn-sm{padding:0 14px; font-size:12.5px; height:32px;}
 .btn-primary{background:linear-gradient(135deg, var(--primary-500), var(--primary-600)); color:#fff; box-shadow:var(--shadow-sm);}
 .btn-primary:hover{box-shadow:var(--glow);}
@@ -288,8 +289,7 @@ table.tx tr:hover td{background:var(--surface-2);}
 .demo-side{background:var(--surface); border-right:1px solid var(--border); padding:20px 14px;}
 .demo-main{padding:26px 30px;}
 .demo-topbar{display:flex; align-items:center; justify-content:space-between; margin-bottom:24px;}
-.demo-search{display:flex; align-items:center; gap:8px; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-pill); padding:0 16px; height:40px; font-size:13px; color:var(--text-3); width:240px; flex-shrink:0;}
-.demo-user{display:flex; align-items:center; gap:10px;}
+
 .avatar{width:34px; height:34px; border-radius:50%; background:var(--secondary-500); color:#fff; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; font-family:var(--font-display); flex-shrink:0; overflow:hidden;}
 @media (max-width:800px){.demo{grid-template-columns:1fr;} .demo-side{display:none;}}
 
@@ -437,8 +437,7 @@ footer{margin-top:80px; padding-top:24px; border-top:1px solid var(--border); fo
   .sec-title { font-size: 22px; }
   .eyebrow { font-size: 10.5px; }
   .demo-topbar { flex-direction: column; gap: 12px; align-items: stretch; }
-  .demo-user { flex-wrap: wrap; gap: 10px; }
-  .demo-search { width: 100%; }
+
   .stat-row { grid-template-columns: 1fr; gap: 12px; }
   .grid-2, .grid-3 { grid-template-columns: 1fr; }
   .page { padding: 16px; }
@@ -485,7 +484,7 @@ footer{margin-top:80px; padding-top:24px; border-top:1px solid var(--border); fo
   .no-hogar { padding: 40px 20px; }
   .no-hogar h3 { font-size: 18px; }
   .badge { font-size: 10.5px; padding: 3px 8px; }
-  .demo-search { display: none; }
+
   .avatar { width: 30px; height: 30px; font-size: 11px; }
   .page-title { font-size: 20px; }
   .sec-title { font-size: 20px; }
