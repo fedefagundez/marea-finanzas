@@ -120,8 +120,13 @@ export class IngresosComponent implements OnInit {
   form: { descripcion: string; monto: number; tipo: 'PUNTUAL' | 'RECURRENTE' | 'INDEFINIDO'; fechaInicio: string; fechaFin: string } = { descripcion: '', monto: 0, tipo: 'PUNTUAL', fechaInicio: '', fechaFin: '' };
 
   ngOnInit() {
+    console.log('[Ingresos] ngOnInit llamado');
     this.hogarId = localStorage.getItem('hogarId') || '';
-    if (this.hogarId) this.aplicarPreset('este-mes');
+    console.log('[Ingresos] hogarId:', this.hogarId);
+    if (this.hogarId) {
+      console.log('[Ingresos] tiene hogarId, llamando aplicarPreset');
+      this.aplicarPreset('este-mes');
+    }
   }
 
   aplicarPreset(preset: string) {
