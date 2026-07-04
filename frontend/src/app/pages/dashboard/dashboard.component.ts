@@ -18,12 +18,7 @@ import { BalanceMes, Dashboard, EvolucionItem, MovimientoReciente, DistribucionG
         <div style="font-family:var(--font-display); font-weight:700; font-size:19px;">Resumen del hogar</div>
         <div style="font-size:12.5px; color:var(--text-3);">{{ today }}</div>
       </div>
-      <div class="demo-user">
-        <div class="demo-search">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-          Buscar…
-        </div>
-      </div>
+      
     </div>
 
     <div class="stat-row">

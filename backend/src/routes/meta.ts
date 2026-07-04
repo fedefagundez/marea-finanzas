@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
 import { verificarMiembro } from '../lib/auth.js';
 import { AppError } from '../middlewares/error.js';
+import { asyncHandler } from '../lib/asyncHandler.js';
 import { authMiddleware, AuthRequest } from '../middlewares/auth.js';
 
 const router = Router();
@@ -25,86 +26,66 @@ const updateMetaSchema = z.object({
   gastoId: z.string().uuid().optional().nullable(),
 });
 
-// GET /api/metas/hogar/:hogarId
-router.get('/hogar/:hogarId', authMiddleware, async (req: AuthRequest, res, next) => {
-  try {
-    const { hogarId } = req.params;
-    await verificarMiembro(req.usuarioId!, hogarId);
+router.get('/hogar/:hogarId', authMiddleware, asyncHandler(async (req: AuthRequest, res) => {
+  const { hogarId } = req.params;
+  await verificarMiembro(req.usuarioId!, hogarId);
 
-    const metas = await prisma.meta.findMany({
-      where: { hogarId },
-      orderBy: { createdAt: 'desc' },
-    });
+  const metas = await prisma.meta.findMany({
+    where: { hogarId },
+    orderBy: { createdAt: 'desc' },
+  });
 
-    res.json(metas.map(m => ({ ...m, montoObjetivo: Number(m.montoObjetivo), montoActual: Number(m.montoActual), cuotaMensual: m.cuotaMensual ? Number(m.cuotaMensual) : null })));
-  } catch (error) {
-    next(error);
-  }
-});
+  res.json(metas.map(m => ({ ...m, montoObjetivo: Number(m.montoObjetivo), montoActual: Number(m.montoActual), cuotaMensual: m.cuotaMensual ? Number(m.cuotaMensual) : null })));
+}));
 
-// POST /api/metas
-router.post('/', authMiddleware, async (req: AuthRequest, res, next) => {
-  try {
-    const data = createMetaSchema.parse(req.body);
-    await verificarMiembro(req.usuarioId!, data.hogarId);
+router.post('/', authMiddleware, asyncHandler(async (req: AuthRequest, res) => {
+  const data = createMetaSchema.parse(req.body);
+  await verificarMiembro(req.usuarioId!, data.hogarId);
 
-    const meta = await prisma.meta.create({
-      data: {
-        nombre: data.nombre,
-        montoObjetivo: data.montoObjetivo,
-        fechaLimite: new Date(data.fechaLimite),
-        cuotaMensual: data.cuotaMensual ?? null,
-        gastoId: data.gastoId ?? null,
-        hogarId: data.hogarId,
-        usuarioId: req.usuarioId!,
-      },
-    });
+  const meta = await prisma.meta.create({
+    data: {
+      nombre: data.nombre,
+      montoObjetivo: data.montoObjetivo,
+      fechaLimite: new Date(data.fechaLimite),
+      cuotaMensual: data.cuotaMensual ?? null,
+      gastoId: data.gastoId ?? null,
+      hogarId: data.hogarId,
+      usuarioId: req.usuarioId!,
+    },
+  });
 
-    res.status(201).json({ ...meta, montoObjetivo: Number(meta.montoObjetivo), montoActual: Number(meta.montoActual), cuotaMensual: meta.cuotaMensual ? Number(meta.cuotaMensual) : null });
-  } catch (error) {
-    next(error);
-  }
-});
+  res.status(201).json({ ...meta, montoObjetivo: Number(meta.montoObjetivo), montoActual: Number(meta.montoActual), cuotaMensual: meta.cuotaMensual ? Number(meta.cuotaMensual) : null });
+}));
 
-// PUT /api/metas/:id
-router.put('/:id', authMiddleware, async (req: AuthRequest, res, next) => {
-  try {
-    const meta = await prisma.meta.findUnique({ where: { id: req.params.id } });
-    if (!meta) throw new AppError(404, 'Meta no encontrada');
+router.put('/:id', authMiddleware, asyncHandler(async (req: AuthRequest, res) => {
+  const meta = await prisma.meta.findUnique({ where: { id: req.params.id } });
+  if (!meta) throw new AppError(404, 'Meta no encontrada');
 
-    await verificarMiembro(req.usuarioId!, meta.hogarId);
+  await verificarMiembro(req.usuarioId!, meta.hogarId);
 
-    const data = updateMetaSchema.parse(req.body);
+  const data = updateMetaSchema.parse(req.body);
 
-    const actualizada = await prisma.meta.update({
-      where: { id: req.params.id },
-      data: {
-        ...data,
-        fechaLimite: data.fechaLimite ? new Date(data.fechaLimite) : undefined,
-        cuotaMensual: data.cuotaMensual === undefined ? undefined : data.cuotaMensual,
-      },
-    });
+  const actualizada = await prisma.meta.update({
+    where: { id: req.params.id },
+    data: {
+      ...data,
+      fechaLimite: data.fechaLimite ? new Date(data.fechaLimite) : undefined,
+      cuotaMensual: data.cuotaMensual === undefined ? undefined : data.cuotaMensual,
+    },
+  });
 
-    res.json({ ...actualizada, montoObjetivo: Number(actualizada.montoObjetivo), montoActual: Number(actualizada.montoActual), cuotaMensual: actualizada.cuotaMensual ? Number(actualizada.cuotaMensual) : null });
-  } catch (error) {
-    next(error);
-  }
-});
+  res.json({ ...actualizada, montoObjetivo: Number(actualizada.montoObjetivo), montoActual: Number(actualizada.montoActual), cuotaMensual: actualizada.cuotaMensual ? Number(actualizada.cuotaMensual) : null });
+}));
 
-// DELETE /api/metas/:id
-router.delete('/:id', authMiddleware, async (req: AuthRequest, res, next) => {
-  try {
-    const meta = await prisma.meta.findUnique({ where: { id: req.params.id } });
-    if (!meta) throw new AppError(404, 'Meta no encontrada');
+router.delete('/:id', authMiddleware, asyncHandler(async (req: AuthRequest, res) => {
+  const meta = await prisma.meta.findUnique({ where: { id: req.params.id } });
+  if (!meta) throw new AppError(404, 'Meta no encontrada');
 
-    await verificarMiembro(req.usuarioId!, meta.hogarId);
+  await verificarMiembro(req.usuarioId!, meta.hogarId);
 
-    await prisma.meta.delete({ where: { id: req.params.id } });
+  await prisma.meta.delete({ where: { id: req.params.id } });
 
-    res.json({ mensaje: 'Meta eliminada' });
-  } catch (error) {
-    next(error);
-  }
-});
+  res.json({ mensaje: 'Meta eliminada' });
+}));
 
 export default router;

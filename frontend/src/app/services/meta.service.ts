@@ -3,18 +3,19 @@ import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
 import { Meta } from '../models';
+import { CrudService } from './crud.service';
 
 @Injectable({ providedIn: 'root' })
-export class MetaService {
-  private apiUrl = `${environment.apiUrl}/metas`;
-
-  constructor(private http: HttpClient) {}
-
-  listar(hogarId: string): Observable<Meta[]> {
-    return this.http.get<Meta[]>(`${this.apiUrl}/hogar/${hogarId}`);
+export class MetaService extends CrudService<Meta> {
+  constructor(http: HttpClient) {
+    super(http, `${environment.apiUrl}/metas`);
   }
 
-  crear(data: {
+  listar(hogarId: string): Observable<Meta[]> {
+    return this.listarPorHogar(hogarId);
+  }
+
+  override crear(data: {
     hogarId: string;
     nombre: string;
     montoObjetivo: number;
@@ -22,14 +23,10 @@ export class MetaService {
     cuotaMensual?: number;
     gastoId?: string;
   }): Observable<Meta> {
-    return this.http.post<Meta>(this.apiUrl, data);
+    return super.crear(data as Record<string, unknown>);
   }
 
-  actualizar(id: string, data: Partial<Pick<Meta, 'nombre' | 'montoObjetivo' | 'montoActual' | 'fechaLimite' | 'cuotaMensual' | 'gastoId'>>): Observable<Meta> {
-    return this.http.put<Meta>(`${this.apiUrl}/${id}`, data);
-  }
-
-  eliminar(id: string): Observable<{ mensaje: string }> {
-    return this.http.delete<{ mensaje: string }>(`${this.apiUrl}/${id}`);
+  override actualizar(id: string, data: Partial<Pick<Meta, 'nombre' | 'montoObjetivo' | 'montoActual' | 'fechaLimite' | 'cuotaMensual' | 'gastoId'>>): Observable<Meta> {
+    return super.actualizar(id, data as Partial<Meta>);
   }
 }
