@@ -2,6 +2,7 @@ import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../services/auth.service';
+import { ReporteService } from '../../services/reporte.service';
 import { ToastService } from '../../services/toast.service';
 import { Usuario } from '../../models';
 
@@ -74,10 +75,49 @@ import { Usuario } from '../../models';
         </button>
       </div>
     </div>
+
+    <div class="card" style="max-width:480px; margin-top:20px;">
+      <div class="card-title">Exportar / Importar datos</div>
+      <div style="margin-top:12px;">
+        <p style="font-size:13px; color:var(--text-2); margin-bottom:12px;">
+          Descargá tus movimientos en CSV o importalos desde un archivo.
+        </p>
+
+        <button type="button" class="btn btn-primary btn-md" (click)="exportarCsv()" [disabled]="exportando">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          {{ exportando ? 'Exportando…' : 'Descargar CSV' }}
+        </button>
+
+        <div style="margin-top:16px; border-top:1px solid var(--border); padding-top:16px;">
+          <label style="font-size:13px; font-weight:600; color:var(--text-2); display:block; margin-bottom:8px;">
+            Importar CSV
+          </label>
+          <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+            <input #fileInput type="file" accept=".csv" (change)="onArchivoSeleccionado($event)" hidden />
+            <button type="button" class="btn btn-secondary btn-md" (click)="fileInput.click()">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              {{ archivoImportar ? archivoImportar.name : 'Seleccionar archivo' }}
+            </button>
+            <button type="button" class="btn btn-primary btn-md"
+              (click)="importarCsv()" [disabled]="!archivoImportar || importando"
+              style="margin-left:4px;">
+              {{ importando ? 'Importando…' : 'Importar' }}
+            </button>
+            <button *ngIf="archivoImportar" type="button" class="btn btn-secondary btn-md" (click)="limpiarArchivo()" style="font-size:12px; padding:0 12px;">
+              ✕
+            </button>
+          </div>
+          <p *ngIf="!archivoImportar" style="font-size:11.5px; color:var(--text-3); margin-top:6px;">
+            Formatos aceptados: .csv
+          </p>
+        </div>
+      </div>
+    </div>
   `
 })
 export class PerfilComponent implements OnInit {
   private authService = inject(AuthService);
+  private reporteService = inject(ReporteService);
   private toast = inject(ToastService);
 
   usuario: Usuario | null = null;
@@ -85,6 +125,10 @@ export class PerfilComponent implements OnInit {
 
   emailForm = { nuevoEmail: '', password: '' };
   passwordForm = { actual: '', nueva: '', confirmar: '' };
+
+  exportando = false;
+  importando = false;
+  archivoImportar: File | null = null;
 
   ngOnInit() {
     this.cargarPerfil();
@@ -135,6 +179,62 @@ export class PerfilComponent implements OnInit {
         this.passwordForm = { actual: '', nueva: '', confirmar: '' };
       },
       error: (err) => this.toast.showApiError(err, 'Error al cambiar contraseña')
+    });
+  }
+
+  onArchivoSeleccionado(event: Event) {
+    const input = event.target as HTMLInputElement;
+    this.archivoImportar = input.files?.item(0) ?? null;
+  }
+
+  limpiarArchivo() {
+    this.archivoImportar = null;
+    const input = document.querySelector<HTMLInputElement>('input[type="file"][accept=".csv"]');
+    if (input) input.value = '';
+  }
+
+  exportarCsv() {
+    const hogarId = localStorage.getItem('hogarId');
+    if (!hogarId) { this.toast.show('Seleccioná un hogar primero', 'error'); return; }
+
+    this.exportando = true;
+    this.reporteService.exportarCsv(hogarId).subscribe({
+      next: (blob) => {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `marea-export-${new Date().toISOString().slice(0, 10)}.csv`;
+        a.click();
+        window.URL.revokeObjectURL(url);
+        this.exportando = false;
+        this.toast.show('CSV descargado', 'success');
+      },
+      error: (err) => {
+        this.exportando = false;
+        this.toast.showApiError(err, 'Error al exportar');
+      }
+    });
+  }
+
+  importarCsv() {
+    if (!this.archivoImportar) return;
+    const hogarId = localStorage.getItem('hogarId');
+    if (!hogarId) { this.toast.show('Seleccioná un hogar primero', 'error'); return; }
+
+    this.importando = true;
+    this.reporteService.importarCsv(hogarId, this.archivoImportar).subscribe({
+      next: (res) => {
+        this.importando = false;
+        this.archivoImportar = null;
+        this.toast.show(res.mensaje, 'success');
+        if (res.errores?.length) {
+          console.warn('Errores de importación:', res.errores);
+        }
+      },
+      error: (err) => {
+        this.importando = false;
+        this.toast.showApiError(err, 'Error al importar');
+      }
     });
   }
 }
