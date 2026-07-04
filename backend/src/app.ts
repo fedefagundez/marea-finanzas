@@ -1,5 +1,6 @@
 import express from 'express';
 import path from 'path';
+import fs from 'fs';
 import cors from 'cors';
 import { config } from './config/index.js';
 import { errorMiddleware } from './middlewares/error.js';
@@ -28,10 +29,30 @@ app.use('/api/categorias', categoriaRoutes);
 app.use('/api/metas', metaRoutes);
 app.use('/api/admin', adminRoutes);
 
-app.use(express.static('public'));
+const publicPath = path.resolve('public');
+app.use(express.static(publicPath));
+
+app.get('/debug-files', (_req, res) => {
+  const listDir = (dir, prefix = '') => {
+    try {
+      return fs.readdirSync(dir, { withFileTypes: true }).flatMap(entry => {
+        const full = path.join(dir, entry.name);
+        const rel = prefix + entry.name;
+        if (entry.isDirectory()) return [rel + '/', ...listDir(full, rel + '/')];
+        return [rel];
+      });
+    } catch { return [`(error reading ${dir})`]; }
+  };
+  res.json({
+    cwd: process.cwd(),
+    publicPath,
+    publicExists: fs.existsSync(publicPath),
+    files: listDir(publicPath),
+  });
+});
 
 app.get('*', (_req, res) => {
-  res.sendFile(path.resolve('public/index.html'));
+  res.sendFile(path.join(publicPath, 'index.html'));
 });
 
 app.use(errorMiddleware);

@@ -12,7 +12,6 @@ COPY backend/package*.json ./
 RUN npm ci
 COPY backend/ ./
 COPY --from=frontend /app/frontend/dist/sistema-economia/browser ./public
-RUN ls -la public/ && ls -la public/index.html
 RUN npx prisma generate && npm run build
 
 EXPOSE 3000
