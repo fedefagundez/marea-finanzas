@@ -10,11 +10,8 @@ export const config = {
     expiresIn: '15m',
     refreshExpiresIn: '7d',
   },
-  smtp: {
-    host: process.env.SMTP_HOST || '',
-    port: Number(process.env.SMTP_PORT) || 587,
-    user: process.env.SMTP_USER || '',
-    pass: process.env.SMTP_PASS || '',
+  resend: {
+    apiKey: process.env.RESEND_API_KEY || '',
   },
   bcrypt: {
     saltRounds: 12,

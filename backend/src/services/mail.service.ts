@@ -1,39 +1,7 @@
-import nodemailer from 'nodemailer';
+import { Resend } from 'resend';
 import { config } from '../config/index.js';
 
-const hasSmtpConfig = Boolean(config.smtp.host && config.smtp.host !== 'smtp.example.com' && config.smtp.user);
-
-let testAccount: nodemailer.TestAccount | null = null;
-let testTransporter: nodemailer.Transporter | null = null;
-
-async function getTestTransporter(): Promise<nodemailer.Transporter> {
-  if (testTransporter) return testTransporter;
-
-  testAccount = await nodemailer.createTestAccount();
-  testTransporter = nodemailer.createTransport({
-    host: 'smtp.ethereal.email',
-    port: 587,
-    secure: false,
-    auth: {
-      user: testAccount.user,
-      pass: testAccount.pass,
-    },
-  });
-
-  return testTransporter;
-}
-
-const prodTransporter = hasSmtpConfig
-  ? nodemailer.createTransport({
-      host: config.smtp.host,
-      port: config.smtp.port,
-      secure: config.smtp.port === 465,
-      auth: {
-        user: config.smtp.user,
-        pass: config.smtp.pass,
-      },
-    })
-  : null;
+const resend = config.resend.apiKey ? new Resend(config.resend.apiKey) : null;
 
 export async function sendPasswordResetEmail(to: string, resetUrl: string): Promise<void> {
   const subject = 'Recuperación de contraseña - Marea';
@@ -48,29 +16,21 @@ export async function sendPasswordResetEmail(to: string, resetUrl: string): Prom
     </div>
   `;
 
-  if (!prodTransporter) {
-    const transporter = await getTestTransporter();
-    const info = await transporter.sendMail({
-      from: '"Marea" <no-reply@marea.app>',
-      to,
-      subject,
-      html,
-    });
+  console.log('========================================');
+  console.log('Link de recuperación para', to, ':', resetUrl);
+  console.log('========================================');
 
-    const previewUrl = nodemailer.getTestMessageUrl(info);
-    console.log('========================================');
-    console.log('Modo desarrollo: email enviado a Ethereal');
-    console.log('Para:', to);
-    console.log('Link de recuperación:', resetUrl);
-    console.log('Ver el email en:', previewUrl);
-    console.log('========================================');
-    return;
-  }
+  if (!resend) return;
 
-  await prodTransporter.sendMail({
-    from: `"Marea" <${config.smtp.user}>`,
+  const { error } = await resend.emails.send({
+    from: 'Marea <onboarding@resend.dev>',
     to,
     subject,
     html,
   });
+
+  if (error) {
+    console.error('Error al enviar email con Resend:', JSON.stringify(error, null, 2));
+    throw new Error('No se pudo enviar el email de recuperación');
+  }
 }
