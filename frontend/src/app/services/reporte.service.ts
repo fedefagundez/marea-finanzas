@@ -4,6 +4,11 @@ import { Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
 import { BalanceMes, Dashboard, Evolucion, EvolucionItem, MovimientoReciente, Proyeccion, DistribucionGasto } from '../models';
 
+export interface ImportarCsvResult {
+  mensaje: string;
+  errores?: string[];
+}
+
 @Injectable({ providedIn: 'root' })
 export class ReporteService {
   private apiUrl = `${environment.apiUrl}/reportes`;
@@ -46,5 +51,17 @@ export class ReporteService {
 
   distribucionGastos(hogarId: string): Observable<DistribucionGasto[]> {
     return this.http.get<DistribucionGasto[]>(`${this.apiUrl}/hogar/${hogarId}/distribucion-gastos`);
+  }
+
+  exportarCsv(hogarId: string): Observable<Blob> {
+    return this.http.get(`${this.apiUrl}/hogar/${hogarId}/exportar-csv`, {
+      responseType: 'blob',
+    });
+  }
+
+  importarCsv(hogarId: string, archivo: File): Observable<ImportarCsvResult> {
+    const formData = new FormData();
+    formData.append('archivo', archivo);
+    return this.http.post<ImportarCsvResult>(`${this.apiUrl}/hogar/${hogarId}/importar-csv`, formData);
   }
 }

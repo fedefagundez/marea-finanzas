@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { startOfMonth, endOfMonth, addMonths, format, parseISO, isAfter } from 'date-fns';
 import { es } from 'date-fns/locale';
+import multer from 'multer';
 import { prisma } from '../lib/prisma.js';
 import { verificarMiembro } from '../lib/auth.js';
 import { calcularTotales } from '../lib/reporte-utils.js';
@@ -10,6 +11,12 @@ import { asyncHandler } from '../lib/asyncHandler.js';
 import { authMiddleware, AuthRequest } from '../middlewares/auth.js';
 
 const router = Router();
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 2 * 1024 * 1024 } });
+
+const csvEscape = (val: unknown): string => {
+  const s = String(val ?? '');
+  return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+};
 
 router.get('/hogar/:hogarId/dashboard', authMiddleware, asyncHandler(async (req: AuthRequest, res) => {
   await verificarMiembro(req.usuarioId!, req.params.hogarId);
@@ -273,6 +280,212 @@ router.get('/hogar/:hogarId/movimientos-recientes', authMiddleware, asyncHandler
   movimientos.sort((a, b) => new Date(b.fechaCreacion).getTime() - new Date(a.fechaCreacion).getTime());
 
   res.json(movimientos.slice(0, limite));
+}));
+
+router.get('/hogar/:hogarId/exportar-csv', authMiddleware, asyncHandler(async (req: AuthRequest, res) => {
+  await verificarMiembro(req.usuarioId!, req.params.hogarId);
+
+  const hogarId = req.params.hogarId;
+
+  const [ingresos, gastos, metas] = await Promise.all([
+    prisma.ingreso.findMany({
+      where: { hogarId },
+      include: { usuario: { select: { username: true } } },
+    }),
+    prisma.gasto.findMany({
+      where: { hogarId },
+      include: { categoria: { select: { nombre: true, icon: true } }, usuario: { select: { username: true } } },
+    }),
+    prisma.meta.findMany({
+      where: { hogarId },
+      include: { usuario: { select: { username: true } } },
+    }),
+  ]);
+
+  const rows: string[] = ['tipo_movimiento,descripcion,monto,tipo,fecha,categoria,usuario,monto_objetivo,monto_actual,fecha_limite'];
+
+  for (const ing of ingresos) {
+    rows.push([
+      'INGRESO',
+      csvEscape(ing.descripcion),
+      csvEscape(Number(ing.monto)),
+      csvEscape(ing.tipo),
+      csvEscape(ing.fechaInicio ? format(ing.fechaInicio, 'yyyy-MM-dd') : ''),
+      '',
+      csvEscape(ing.usuario?.username ?? ''),
+      '', '', '',
+    ].join(','));
+  }
+
+  for (const g of gastos) {
+    rows.push([
+      'GASTO',
+      csvEscape(g.descripcion),
+      csvEscape(Number(g.monto)),
+      csvEscape(g.tipo),
+      csvEscape(g.fechaInicio ? format(g.fechaInicio, 'yyyy-MM-dd') : ''),
+      csvEscape(g.categoria ? `${g.categoria.icon} ${g.categoria.nombre}` : ''),
+      csvEscape(g.usuario?.username ?? ''),
+      '', '', '',
+    ].join(','));
+  }
+
+  for (const m of metas) {
+    rows.push([
+      'META',
+      csvEscape(m.nombre),
+      '',
+      '',
+      '',
+      '',
+      csvEscape(m.usuario?.username ?? ''),
+      csvEscape(Number(m.montoObjetivo)),
+      csvEscape(Number(m.montoActual)),
+      csvEscape(format(m.fechaLimite, 'yyyy-MM-dd')),
+    ].join(','));
+  }
+
+  const csv = rows.join('\n');
+  const filename = `marea-export-${format(new Date(), 'yyyy-MM-dd')}.csv`;
+
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+  res.send('\uFEFF' + csv);
+}));
+
+router.post('/hogar/:hogarId/importar-csv', authMiddleware, upload.single('archivo'), asyncHandler(async (req: AuthRequest, res) => {
+  await verificarMiembro(req.usuarioId!, req.params.hogarId);
+
+  if (!req.file) throw new AppError(400, 'Debes subir un archivo CSV');
+
+  const hogarId = req.params.hogarId;
+  const contenido = req.file.buffer.toString('utf-8').replace(/^\uFEFF/, '');
+  const lineas = contenido.split('\n').map(l => l.trim()).filter(Boolean);
+
+  if (lineas.length < 2) throw new AppError(400, 'El CSV está vacío');
+
+  const cabeceras = lineas[0].split(',').map(h => h.trim().toLowerCase());
+  const idxTipoMov = cabeceras.indexOf('tipo_movimiento');
+  const idxDesc = cabeceras.indexOf('descripcion');
+  const idxMonto = cabeceras.indexOf('monto');
+  const idxFecha = cabeceras.indexOf('fecha');
+  const idxTipo = cabeceras.indexOf('tipo');
+  const idxCategoria = cabeceras.indexOf('categoria');
+  const idxMontoObj = cabeceras.indexOf('monto_objetivo');
+  const idxMontoAct = cabeceras.indexOf('monto_actual');
+  const idxFechaLim = cabeceras.indexOf('fecha_limite');
+
+  if (idxTipoMov === -1 || idxDesc === -1) {
+    throw new AppError(400, 'El CSV debe tener las columnas: tipo_movimiento, descripcion');
+  }
+
+  const csvParseLine = (line: string): string[] => {
+    const result: string[] = [];
+    let current = '';
+    let inQuotes = false;
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (inQuotes) {
+        if (ch === '"' && line[i + 1] === '"') { current += '"'; i++; }
+        else if (ch === '"') inQuotes = false;
+        else current += ch;
+      } else {
+        if (ch === '"') inQuotes = true;
+        else if (ch === ',') { result.push(current); current = ''; }
+        else current += ch;
+      }
+    }
+    result.push(current);
+    return result;
+  };
+
+  let creados = 0;
+  const errores: string[] = [];
+
+  for (let i = 1; i < lineas.length; i++) {
+    const cols = csvParseLine(lineas[i]);
+    const tipoMov = (cols[idxTipoMov] ?? '').trim().toUpperCase();
+    const descripcion = (cols[idxDesc] ?? '').trim();
+    const montoRaw = (cols[idxMonto] ?? '').trim().replace(/[$,]/g, '');
+    const monto = parseFloat(montoRaw);
+    const fecha = idxFecha !== -1 ? (cols[idxFecha] ?? '').trim() : '';
+    const tipo = idxTipo !== -1 ? (cols[idxTipo] ?? '').trim().toUpperCase() : 'PUNTUAL';
+
+    if (tipoMov === 'META') {
+      const montoObjRaw = idxMontoObj !== -1 ? (cols[idxMontoObj] ?? '').trim().replace(/[$,]/g, '') : '';
+      const montoObj = parseFloat(montoObjRaw);
+      const montoActRaw = idxMontoAct !== -1 ? (cols[idxMontoAct] ?? '').trim().replace(/[$,]/g, '') : '';
+      const montoAct = parseFloat(montoActRaw);
+      const fechaLim = idxFechaLim !== -1 ? (cols[idxFechaLim] ?? '').trim() : '';
+
+      if (!descripcion || isNaN(montoObj) || montoObj <= 0) {
+        errores.push(`Línea ${i + 1}: meta sin nombre o monto_objetivo inválido`);
+        continue;
+      }
+
+      try {
+        await prisma.meta.create({
+          data: {
+            hogarId,
+            usuarioId: req.usuarioId!,
+            nombre: descripcion,
+            montoObjetivo: montoObj,
+            montoActual: isNaN(montoAct) || montoAct < 0 ? 0 : montoAct,
+            fechaLimite: fechaLim ? new Date(fechaLim) : new Date(),
+          },
+        });
+        creados++;
+      } catch (e) {
+        errores.push(`Línea ${i + 1}: error al crear meta`);
+      }
+      continue;
+    }
+
+    if (idxMonto === -1 || !descripcion || isNaN(monto) || monto <= 0) {
+      errores.push(`Línea ${i + 1}: descripción o monto inválido`);
+      continue;
+    }
+
+    if (tipoMov !== 'INGRESO' && tipoMov !== 'GASTO') {
+      errores.push(`Línea ${i + 1}: tipo_movimiento debe ser INGRESO, GASTO o META`);
+      continue;
+    }
+
+    const tipoValido = ['PUNTUAL', 'RECURRENTE', 'INDEFINIDO'].includes(tipo) ? tipo : 'PUNTUAL';
+
+    const fechaInicio = fecha ? new Date(fecha) : undefined;
+
+    try {
+      if (tipoMov === 'INGRESO') {
+        await prisma.ingreso.create({
+          data: {
+            hogarId,
+            usuarioId: req.usuarioId!,
+            descripcion,
+            monto,
+            tipo: tipoValido as 'PUNTUAL' | 'RECURRENTE' | 'INDEFINIDO',
+            fechaInicio,
+          },
+        });
+      } else {
+        await prisma.gasto.create({
+          data: {
+            hogarId,
+            usuarioId: req.usuarioId!,
+            descripcion,
+            monto,
+            tipo: tipoValido as 'PUNTUAL' | 'RECURRENTE' | 'INDEFINIDO',
+            fechaInicio,
+          },
+        });
+      }
+      creados++;
+    } catch (e) {
+      errores.push(`Línea ${i + 1}: error al crear`);
+    }
+  }
+
+  res.json({ mensaje: `Se importaron ${creados} movimientos${errores.length ? ` (${errores.length} errores)` : ''}`, errores: errores.length ? errores : undefined });
 }));
 
 export default router;
