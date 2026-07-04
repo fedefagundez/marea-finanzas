@@ -13,7 +13,11 @@ export const calcularTotales = (
 
   const totalGastos = gastos
     .filter(gas => esGastoVigente(gas, inicio, fin, { incluirPuntuales }))
-    .reduce((sum, gas) => sum + Number(gas.monto), 0);
+    .reduce((sum, gas) => {
+      const monto = Number(gas.monto);
+      const valorMensual = gas.cuotasTotales ? monto / gas.cuotasTotales : monto;
+      return sum + valorMensual;
+    }, 0);
 
   return { totalIngresos, totalGastos, balance: totalIngresos - totalGastos };
 };

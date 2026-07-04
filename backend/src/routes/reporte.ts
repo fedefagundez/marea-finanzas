@@ -229,7 +229,8 @@ router.get('/hogar/:hogarId/distribucion-gastos', authMiddleware, asyncHandler(a
           : { id: null, nombre: 'Sin categoría', icon: '📂' },
       };
     }
-    agrupado[key].total += Number(g.monto);
+    const montoGasto = Number(g.monto);
+    agrupado[key].total += g.cuotasTotales ? montoGasto / g.cuotasTotales : montoGasto;
   }
 
   const totalGeneral = Object.values(agrupado).reduce((s, v) => s + v.total, 0);
