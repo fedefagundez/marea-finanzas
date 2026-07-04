@@ -396,6 +396,7 @@ footer{margin-top:80px; padding-top:24px; border-top:1px solid var(--border); fo
     position: sticky; top: 0; z-index: 100;
     padding: 12px 16px; background: var(--surface);
     border-bottom: 1px solid var(--border);
+    height: 57px;
   }
   .mobile-header .brand { padding: 0; }
   .mobile-header .brand svg { width: 28px; height: 28px; }
