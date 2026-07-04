@@ -107,8 +107,8 @@ import { BalanceMes, Dashboard, EvolucionItem, MovimientoReciente, DistribucionG
     </div>
     <div *ngIf="movimientos.length > 0" class="card" style="padding:6px 4px;">
       <table class="tx">
-        <tr><th>Movimiento</th><th>Tipo</th><th style="text-align:right;">Monto</th></tr>
-        <tr *ngFor="let m of movimientos">
+        <thead><tr><th>Movimiento</th><th>Tipo</th><th style="text-align:right;">Monto</th></tr></thead>
+        <tbody><tr *ngFor="let m of movimientos">
           <td>
             <div class="tx-name">
               <span class="tx-icon" [style.background]="m.tipo === 'INGRESO' ? 'var(--success-100)' : 'var(--primary-50)'" [style.color]="m.tipo === 'INGRESO' ? 'var(--success-700)' : 'var(--primary-700)'">{{ m.tipo === 'INGRESO' ? '+' : '-' }}</span>
@@ -117,7 +117,7 @@ import { BalanceMes, Dashboard, EvolucionItem, MovimientoReciente, DistribucionG
           </td>
           <td><span class="badge" [class.badge-success]="m.tipo === 'INGRESO'" [class.badge-danger]="m.tipo === 'GASTO'">{{ m.tipo === 'INGRESO' ? 'Ingreso' : 'Gasto' }}</span></td>
           <td style="text-align:right;" [class.amt-pos]="m.tipo === 'INGRESO'" [class.amt-neg]="m.tipo === 'GASTO'">{{ m.monto | arsCurrency }}</td>
-        </tr>
+        </tr></tbody>
       </table>
     </div>
 

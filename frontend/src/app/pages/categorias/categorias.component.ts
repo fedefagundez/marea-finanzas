@@ -67,8 +67,8 @@ const ICONOS_DISPONIBLES = [
 
     <div *ngIf="categorias.length" class="card" style="padding:4px;">
       <table class="tx">
-        <tr><th>Icono</th><th>Nombre</th><th>Tipo</th><th style="text-align:right;">Acciones</th></tr>
-        <tr *ngFor="let c of categorias">
+        <thead><tr><th>Icono</th><th>Nombre</th><th>Tipo</th><th style="text-align:right;">Acciones</th></tr></thead>
+        <tbody><tr *ngFor="let c of categorias">
           <td data-label="Icono"><span class="cat-icon" style="background:var(--n-100); color:var(--n-600); font-size:18px;">{{ c.icon }}</span></td>
           <td data-label="Nombre"><strong>{{ c.nombre }}</strong></td>
           <td data-label="Tipo">
@@ -80,7 +80,7 @@ const ICONOS_DISPONIBLES = [
             <button *ngIf="c.usuarioId" type="button" class="btn btn-ghost btn-sm" (click)="editar(c)">Editar</button>
             <button *ngIf="c.usuarioId" type="button" class="btn btn-danger btn-sm" (click)="eliminar(c.id)">Eliminar</button>
           </td>
-        </tr>
+        </tr></tbody>
       </table>
     </div>
   `,

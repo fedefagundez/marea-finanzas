@@ -94,8 +94,8 @@ import calcularRango from '../../core/utils/date-presets';
 
     <div *ngIf="hogarId && ingresos.length" class="card" style="padding:6px 4px;">
       <table class="tx">
-        <tr><th>Descripción</th><th>Monto</th><th>Tipo</th><th>Fecha</th><th style="text-align:right;">Acciones</th></tr>
-        <tr *ngFor="let i of ingresos">
+        <thead><tr><th>Descripción</th><th>Monto</th><th>Tipo</th><th>Fecha</th><th style="text-align:right;">Acciones</th></tr></thead>
+        <tbody><tr *ngFor="let i of ingresos">
           <td data-label="Descripción"><div class="tx-name"><span class="tx-icon" style="background:var(--success-100); color:var(--success-700);">$</span>{{ i.descripcion || '-' }}</div></td>
           <td data-label="Monto" class="amt-pos">{{ (i.monto | currency:'ARS':'symbol':'1.0-0':'es-AR') || '-' }}</td>
           <td data-label="Tipo"><span class="badge"
@@ -107,7 +107,7 @@ import calcularRango from '../../core/utils/date-presets';
             <button type="button" class="btn btn-ghost btn-sm" (click)="editar(i)">Editar</button>
             <button type="button" class="btn btn-danger btn-sm" (click)="eliminar(i.id)">Eliminar</button>
           </td>
-        </tr>
+        </tr></tbody>
       </table>
     </div>
   `
