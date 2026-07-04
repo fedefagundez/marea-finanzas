@@ -142,6 +142,57 @@ router.post('/forgot-password', asyncHandler(async (req, res) => {
   res.json({ message: 'Si el email está registrado, recibirás instrucciones para restablecer tu contraseña.' });
 }));
 
+const cambiarEmailSchema = z.object({
+  email: z.string().email().transform(s => s.trim()),
+  password: z.string().min(1),
+});
+
+const cambiarContraseniaSchema = z.object({
+  passwordActual: z.string().min(1),
+  passwordNueva: z.string().min(8),
+});
+
+router.put('/cambiar-email', authMiddleware, asyncHandler(async (req: AuthRequest, res) => {
+  const data = cambiarEmailSchema.parse(req.body);
+
+  const usuario = await prisma.usuario.findUnique({ where: { id: req.usuarioId } });
+  if (!usuario) throw new AppError(404, 'Usuario no encontrado');
+
+  const valido = await bcrypt.compare(data.password, usuario.passwordHash);
+  if (!valido) throw new AppError(400, 'Contraseña incorrecta');
+
+  const existente = await prisma.usuario.findUnique({ where: { email: data.email } });
+  if (existente && existente.id !== req.usuarioId) {
+    throw new AppError(400, 'El email ya está registrado por otro usuario');
+  }
+
+  await prisma.usuario.update({
+    where: { id: req.usuarioId },
+    data: { email: data.email },
+  });
+
+  res.json({ mensaje: 'Email actualizado correctamente' });
+}));
+
+router.put('/cambiar-contrasenia', authMiddleware, asyncHandler(async (req: AuthRequest, res) => {
+  const data = cambiarContraseniaSchema.parse(req.body);
+
+  const usuario = await prisma.usuario.findUnique({ where: { id: req.usuarioId } });
+  if (!usuario) throw new AppError(404, 'Usuario no encontrado');
+
+  const valido = await bcrypt.compare(data.passwordActual, usuario.passwordHash);
+  if (!valido) throw new AppError(400, 'Contraseña actual incorrecta');
+
+  const passwordHash = await bcrypt.hash(data.passwordNueva, config.bcrypt.saltRounds);
+
+  await prisma.usuario.update({
+    where: { id: req.usuarioId },
+    data: { passwordHash },
+  });
+
+  res.json({ mensaje: 'Contraseña actualizada correctamente' });
+}));
+
 router.post('/reset-password', asyncHandler(async (req, res) => {
   const data = resetPasswordSchema.parse(req.body);
 
