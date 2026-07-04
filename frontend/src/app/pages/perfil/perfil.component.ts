@@ -138,6 +138,7 @@ export class PerfilComponent implements OnInit {
     this.authService.me().subscribe({
       next: (user) => {
         this.usuario = user;
+        this.authService.saveUser(user);
         this.emailForm.nuevoEmail = user.email;
       },
       error: (err) => this.toast.showApiError(err, 'Error al cargar perfil')

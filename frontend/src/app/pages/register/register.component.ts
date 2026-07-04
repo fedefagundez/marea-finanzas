@@ -71,6 +71,7 @@ export class RegisterComponent {
     this.authService.register(this.username, this.email, this.password).subscribe({
       next: (res) => {
         this.authService.saveTokens(res.token, res.refreshToken);
+        this.authService.saveUser(res.usuario);
         this.router.navigate(['/dashboard']);
       },
       error: (err) => this.toast.showApiError(err, 'Error al registrar')

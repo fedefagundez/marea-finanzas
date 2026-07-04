@@ -53,6 +53,7 @@ export class LoginComponent {
     this.authService.login(this.username, this.password).subscribe({
       next: (res) => {
         this.authService.saveTokens(res.token, res.refreshToken);
+        this.authService.saveUser(res.usuario);
         this.router.navigate(['/dashboard']);
       },
       error: (err) => this.toast.showApiError(err, 'Error al iniciar sesión')

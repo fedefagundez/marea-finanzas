@@ -4,6 +4,7 @@ import { config } from '../config/index.js';
 
 export interface AuthRequest extends Request {
   usuarioId?: string;
+  usuarioRol?: string;
 }
 
 export const authMiddleware = (

@@ -10,6 +10,7 @@ import tarjetaRoutes from './routes/tarjeta.js';
 import reporteRoutes from './routes/reporte.js';
 import categoriaRoutes from './routes/categoria.js';
 import metaRoutes from './routes/meta.js';
+import adminRoutes from './routes/admin.js';
 
 const app = express();
 
@@ -24,6 +25,7 @@ app.use('/api/tarjetas', tarjetaRoutes);
 app.use('/api/reportes', reporteRoutes);
 app.use('/api/categorias', categoriaRoutes);
 app.use('/api/metas', metaRoutes);
+app.use('/api/admin', adminRoutes);
 
 app.use(errorMiddleware);
 

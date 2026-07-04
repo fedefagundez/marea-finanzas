@@ -8,6 +8,8 @@ import { AuthResponse, Usuario } from '../models';
 export class AuthService {
   private apiUrl = `${environment.apiUrl}/auth`;
 
+  currentUser = signal<Usuario | null>(null);
+
   constructor(private http: HttpClient, private router: Router) {}
 
   register(username: string, email: string, password: string) {
@@ -39,6 +41,10 @@ export class AuthService {
     localStorage.setItem('refreshToken', refreshToken);
   }
 
+  saveUser(usuario: Usuario) {
+    this.currentUser.set(usuario);
+  }
+
   getToken(): string | null {
     return localStorage.getItem('token');
   }
@@ -50,6 +56,7 @@ export class AuthService {
   logout() {
     localStorage.removeItem('token');
     localStorage.removeItem('refreshToken');
+    this.currentUser.set(null);
     this.router.navigate(['/login']);
   }
 
