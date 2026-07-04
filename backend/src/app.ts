@@ -1,4 +1,5 @@
 import express from 'express';
+import path from 'path';
 import cors from 'cors';
 import { config } from './config/index.js';
 import { errorMiddleware } from './middlewares/error.js';
@@ -26,6 +27,12 @@ app.use('/api/reportes', reporteRoutes);
 app.use('/api/categorias', categoriaRoutes);
 app.use('/api/metas', metaRoutes);
 app.use('/api/admin', adminRoutes);
+
+app.use(express.static('public'));
+
+app.get('*', (_req, res) => {
+  res.sendFile(path.resolve('public/index.html'));
+});
 
 app.use(errorMiddleware);
 
