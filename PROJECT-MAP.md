@@ -245,7 +245,7 @@ Nota: `.card:has(table.tx){overflow-x:auto}` está SIEMPRE activo (global), no s
 
 ## KNOWN DEBT / CONSTRAINTS
 - Sin tests unitarios/e2e
-- SQLite en dev (target PostgreSQL)
+- SQLite en Railway (efímero, se resetea en cada deploy)
 - Sin auto-refresh en interceptor (401 → logout directo)
 - Tipos PUNTUAL/RECURRENTE/INDEFINIDO hardcodeados en frontend y backend
 - Schema Prisma debe mantenerse alineado con `frontend/src/app/models/index.ts`
@@ -255,5 +255,30 @@ Nota: `.card:has(table.tx){overflow-x:auto}` está SIEMPRE activo (global), no s
 
 ---
 
-*Última actualización: 2026-07-03*  
+## FIXES & CHANGES (2026-07-04)
+
+### Admin panel
+- Backend: rutas `GET/PUT/DELETE /api/admin/usuarios`, `adminMiddleware` (requiere rol ADMIN)
+- Frontend: `AdminComponent`, `AdminService`, `adminGuard`, nav link condicional (`rol === 'ADMIN'`)
+- Admin se promueve automáticamente si `ADMIN_EMAIL` está en env vars
+
+### Deployment (Railway + Docker)
+- `Dockerfile` multi-stage: build frontend (Angular 19) + backend (Node 20 + Prisma)
+- `.dockerignore` excluye `node_modules`, `dist`, `.git`, `.env`
+- Express sirve estáticos desde `./public` con catch-all `*` para SPA
+- `fileReplacements` en `angular.json` para `environment.prod.ts` (apiUrl: `/api`)
+- Variables env en Railway: `DATABASE_URL`, `JWT_SECRET`, `JWT_REFRESH_SECRET`, `FRONTEND_URL`, `ADMIN_EMAIL`, `RESEND_API_KEY`
+
+### UX fixes (ingresos/gastos sin hogar)
+- Cuando `hogarId` está vacío, se muestra mensaje "Seleccioná un hogar" con botón a `/hogares`
+- El `demo-topbar` usa el mismo formato simple que el Dashboard (sin `.eyebrow`/`.sec-title`) cuando no hay hogar
+- `mobile-header` tiene `height: 57px` fijo para consistencia entre páginas
+- `grid-template-rows: auto 1fr` en `.shell` en mobile para que el contenido llene el viewport
+
+### DatePicker (flatpickr)
+- `ngOnInit` envuelto en try-catch para evitar que un error de flatpickr deje la página en blanco
+
+---
+
+*Última actualización: 2026-07-04*  
 *Nota: envío de emails con Resend SDK (dev: log por consola, prod: requiere `RESEND_API_KEY` en .env)*
