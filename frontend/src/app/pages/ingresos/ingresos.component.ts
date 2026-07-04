@@ -17,9 +17,12 @@ import calcularRango from '../../core/utils/date-presets';
   imports: [CommonModule, FormsModule, RouterLink, DatePickerComponent],
   template: `
     <div class="demo-topbar">
-      <div>
+      <div *ngIf="hogarId">
         <div class="eyebrow">Movimientos</div>
         <div class="sec-title">Ingresos</div>
+      </div>
+      <div *ngIf="!hogarId">
+        <div style="font-family:var(--font-display); font-weight:700; font-size:19px;">Ingresos</div>
       </div>
     </div>
 
