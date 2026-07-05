@@ -52,6 +52,8 @@ export class RegisterComponent {
   password = '';
 
   register() {
+    this.username = this.username.trim();
+    this.email = this.email.trim();
     if (!this.email || !this.password || !this.username) {
       this.toast.show('Todos los campos son obligatorios', 'error');
       return;

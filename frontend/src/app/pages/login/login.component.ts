@@ -50,6 +50,7 @@ export class LoginComponent {
   password = '';
 
   login() {
+    this.username = this.username.trim();
     this.authService.login(this.username, this.password).subscribe({
       next: (res) => {
         this.authService.saveTokens(res.token, res.refreshToken);
