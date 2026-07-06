@@ -179,6 +179,35 @@ router.post('/:id/invitar', authMiddleware, async (req: AuthRequest, res, next) 
   }
 });
 
+// DELETE /api/hogares/:hogarId/miembros/:miembroId
+router.delete('/:hogarId/miembros/:miembroId', authMiddleware, async (req: AuthRequest, res, next) => {
+  try {
+    const miembro = await verificarMiembro(req.usuarioId!, req.params.hogarId);
+
+    if (miembro.rol !== 'ADMIN') {
+      throw new AppError(403, 'Solo el administrador puede quitar miembros');
+    }
+
+    const target = await prisma.miembroHogar.findUnique({
+      where: { id: req.params.miembroId },
+    });
+
+    if (!target || target.hogarId !== req.params.hogarId) {
+      throw new AppError(404, 'Miembro no encontrado en este hogar');
+    }
+
+    if (target.usuarioId === req.usuarioId) {
+      throw new AppError(400, 'No puedes eliminarte a ti mismo del hogar');
+    }
+
+    await prisma.miembroHogar.delete({ where: { id: req.params.miembroId } });
+
+    res.json({ mensaje: 'Miembro eliminado del hogar' });
+  } catch (error) {
+    next(error);
+  }
+});
+
 // DELETE /api/hogares/:id
 router.delete('/:id', authMiddleware, async (req: AuthRequest, res, next) => {
   try {

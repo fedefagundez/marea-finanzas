@@ -71,6 +71,17 @@ import { validarNombre, validarUltimos4 } from '../../core/utils/form-utils';
       </div>
 
       <div style="margin-top:16px; padding-top:16px; border-top:1px solid var(--border);">
+        <div class="card-title">Miembros</div>
+        <div *ngFor="let m of h.miembros || []" style="display:flex; justify-content:space-between; align-items:center; gap:8px; padding:10px 12px; margin-bottom:6px; border-radius:var(--radius-sm); font-size:13.5px; background:var(--surface-2);">
+          <span>
+            {{ m.usuario.username }}
+            <span *ngIf="m.rol === 'ADMIN'" class="badge badge-warning" style="margin-left:6px;">Admin</span>
+          </span>
+          <button *ngIf="esAdmin(h) && m.rol !== 'ADMIN'" type="button" class="btn btn-danger btn-sm" (click)="quitarMiembro(h.id, m.id)">Quitar</button>
+        </div>
+      </div>
+
+      <div style="margin-top:16px; padding-top:16px; border-top:1px solid var(--border);">
         <div class="card-title">Tarjetas de crédito</div>
         <form (ngSubmit)="crearTarjeta(h.id)" class="btn-row">
           <div class="field" style="flex:1;">
@@ -222,6 +233,16 @@ export class HogaresComponent implements OnInit {
         this.cargarHogares();
       },
       error: (err) => this.toast.showApiError(err, 'Error al eliminar hogar')
+    });
+  }
+
+  quitarMiembro(hogarId: string, miembroId: string) {
+    this.hogarService.quitarMiembro(hogarId, miembroId).subscribe({
+      next: () => {
+        this.toast.show('Miembro eliminado del hogar', 'success');
+        this.cargarHogares();
+      },
+      error: (err) => this.toast.showApiError(err, 'Error al quitar miembro')
     });
   }
 
