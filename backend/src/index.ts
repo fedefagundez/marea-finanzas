@@ -16,12 +16,36 @@ async function promoverAdmin() {
   }
 }
 
+async function seedGlobalCategories() {
+  const defaultCategories = [
+    { nombre: 'Servicios', icon: '💡' },
+    { nombre: 'Educación', icon: '📚' },
+    { nombre: 'Alimentación', icon: '🛒' },
+    { nombre: 'Salud', icon: '🏥' },
+    { nombre: 'Transporte', icon: '🚗' },
+    { nombre: 'Ocio', icon: '🎬' },
+  ];
+
+  for (const cat of defaultCategories) {
+    const exists = await prisma.categoria.findFirst({
+      where: { nombre: cat.nombre, hogarId: null, usuarioId: null },
+    });
+    if (!exists) {
+      await prisma.categoria.create({
+        data: { ...cat, hogarId: null, usuarioId: null },
+      });
+      console.log(`Categoría global creada: ${cat.nombre}`);
+    }
+  }
+}
+
 async function main() {
   try {
     await prisma.$connect();
     console.log('Conexión a base de datos establecida');
 
     await promoverAdmin();
+    await seedGlobalCategories();
 
     app.listen(config.port, () => {
       console.log(`Servidor corriendo en puerto ${config.port}`);
