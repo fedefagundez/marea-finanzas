@@ -5,6 +5,8 @@ import { Router } from '@angular/router';
 import { HogarService } from '../../services/hogar.service';
 import { TarjetaService } from '../../services/tarjeta.service';
 import { ToastService } from '../../services/toast.service';
+import { ConfirmService } from '../../services/confirm.service';
+import { AuthService } from '../../services/auth.service';
 import { Hogar, TarjetaResumen } from '../../models';
 import { validarNombre, validarUltimos4 } from '../../core/utils/form-utils';
 
@@ -61,6 +63,7 @@ import { validarNombre, validarUltimos4 } from '../../core/utils/form-utils';
         <div style="display:flex; gap:8px;">
           <button *ngIf="h.id !== hogarSeleccionado" type="button" class="btn btn-primary btn-sm" (click)="seleccionarHogar(h)">Seleccionar</button>
           <button type="button" class="btn btn-secondary btn-sm" (click)="invitar(h)">Invitar</button>
+          <button *ngIf="esAdmin(h)" type="button" class="btn btn-danger btn-sm" (click)="eliminarHogar(h)">Eliminar</button>
         </div>
       </div>
       <div *ngIf="linkInvitacion === h.id && h.tokenInvitacion" class="invite-link">
@@ -111,6 +114,8 @@ export class HogaresComponent implements OnInit {
   private tarjetaService = inject(TarjetaService);
   private router = inject(Router);
   private toast = inject(ToastService);
+  private confirm = inject(ConfirmService);
+  private auth = inject(AuthService);
 
   hogares: Hogar[] = [];
   hogarSeleccionado = '';
@@ -192,6 +197,31 @@ export class HogaresComponent implements OnInit {
         this.toast.show('Invitación generada', 'success');
       },
       error: (err) => this.toast.showApiError(err, 'Error al generar invitación')
+    });
+  }
+
+  esAdmin(h: Hogar): boolean {
+    const usuarioId = this.auth.currentUser()?.id;
+    if (!usuarioId || !h.miembros) return false;
+    return h.miembros.some(m => m.usuario.id === usuarioId && m.rol === 'ADMIN');
+  }
+
+  async eliminarHogar(h: Hogar) {
+    const ok = await this.confirm.confirm(
+      `¿Estás seguro de eliminar "${h.nombre}"?\n\nEsta acción eliminará TODOS los ingresos, gastos, tarjetas, categorías y metas asociados a este hogar. No se puede deshacer.`
+    );
+    if (!ok) return;
+
+    this.hogarService.eliminar(h.id).subscribe({
+      next: () => {
+        this.toast.show(`Hogar "${h.nombre}" eliminado`, 'error');
+        if (this.hogarSeleccionado === h.id) {
+          localStorage.removeItem('hogarId');
+          this.hogarSeleccionado = '';
+        }
+        this.cargarHogares();
+      },
+      error: (err) => this.toast.showApiError(err, 'Error al eliminar hogar')
     });
   }
 
