@@ -66,8 +66,9 @@ import { validarNombre, validarUltimos4 } from '../../core/utils/form-utils';
           <button *ngIf="esAdmin(h)" type="button" class="btn btn-danger btn-sm" (click)="eliminarHogar(h)">Eliminar</button>
         </div>
       </div>
-      <div *ngIf="linkInvitacion === h.id && h.tokenInvitacion" class="invite-link">
-        {{ getInviteUrl(h.tokenInvitacion) }}
+      <div *ngIf="linkInvitacion === h.id && h.tokenInvitacion" class="invite-link" style="display:flex; align-items:center; gap:8px;">
+        <code style="font-size:13px; user-select:all;">{{ h.tokenInvitacion }}</code>
+        <button type="button" class="btn btn-ghost btn-sm" (click)="copiarToken(h.tokenInvitacion!)">Copiar</button>
       </div>
 
       <div style="margin-top:16px; padding-top:16px; border-top:1px solid var(--border);">
@@ -246,8 +247,12 @@ export class HogaresComponent implements OnInit {
     });
   }
 
-  getInviteUrl(token: string | undefined): string {
-    return `${window.location.origin}/unirse?token=${token}`;
+  copiarToken(token: string) {
+    navigator.clipboard.writeText(token).then(() => {
+      this.toast.show('Token copiado al portapapeles', 'success');
+    }).catch(() => {
+      this.toast.show('No se pudo copiar el token', 'error');
+    });
   }
 
   private validarTarjeta(nombre: string, ultimo4: string): boolean {
