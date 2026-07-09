@@ -18,10 +18,19 @@
             "polyfills": ["zone.js"],
             "tsConfig": "tsconfig.app.json",
             "styles": ["src/styles.css"],
-            "scripts": []
+            "scripts": [],
+            "assets": [
+              { "glob": "favicon.ico", "input": "src", "output": "" }
+            ]
           },
           "configurations": {
             "production": {
+              "fileReplacements": [
+                {
+                  "replace": "src/environments/environment.ts",
+                  "with": "src/environments/environment.prod.ts"
+                }
+              ],
               "budgets": [],
               "outputHashing": "all"
             },

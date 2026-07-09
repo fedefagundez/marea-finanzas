@@ -9,6 +9,7 @@ const defaultCategories = [
   { nombre: 'Salud', icon: '🏥' },
   { nombre: 'Transporte', icon: '🚗' },
   { nombre: 'Ocio', icon: '🎬' },
+  { nombre: 'Metas', icon: '🎯' },
 ];
 
 async function main() {

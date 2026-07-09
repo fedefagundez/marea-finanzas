@@ -10,8 +10,8 @@ export class TarjetaService {
 
   constructor(private http: HttpClient) {}
 
-  crear(hogarId: string, nombre: string, ultimo4: string): Observable<TarjetaCredito> {
-    return this.http.post<TarjetaCredito>(this.apiUrl, { hogarId, nombre, ultimo4 });
+  crear(hogarId: string, nombre: string, ultimo4: string, diaCierre?: number): Observable<TarjetaCredito> {
+    return this.http.post<TarjetaCredito>(this.apiUrl, { hogarId, nombre, ultimo4, diaCierre });
   }
 
   listarPorHogar(hogarId: string): Observable<TarjetaCredito[]> {

@@ -47,32 +47,36 @@ export class DatePickerComponent implements OnInit, OnDestroy, ControlValueAcces
   private onTouched: () => void = () => {};
 
   ngOnInit() {
-    this.instance = flatpickr(this.inputRef.nativeElement, {
-      dateFormat: 'Y-m-d',
-      altInput: true,
-      altFormat: 'd/m/Y',
-      locale: Spanish,
-      allowInput: true,
-      clickOpens: true,
-      defaultDate: this.value || undefined,
-      onReady: (_, __, instance) => {
-        if (instance.altInput) {
-          instance.altInput.removeAttribute('readonly');
-          instance.altInput.classList.add('marea-date-input');
-          instance.altInput.style.paddingRight = '38px';
-        }
-      },
-      onChange: (selectedDates) => {
-        const date = selectedDates[0];
-        const newValue = date ? this.formatDate(date) : null;
-        this.value = newValue;
-        this.onChange(newValue);
-        this.onTouched();
-      },
-      onClose: () => {
-        this.onTouched();
-      },
-    });
+    try {
+      this.instance = flatpickr(this.inputRef.nativeElement, {
+        dateFormat: 'Y-m-d',
+        altInput: true,
+        altFormat: 'd/m/Y',
+        locale: Spanish,
+        allowInput: true,
+        clickOpens: true,
+        defaultDate: this.value || undefined,
+        onReady: (_, __, instance) => {
+          if (instance.altInput) {
+            instance.altInput.removeAttribute('readonly');
+            instance.altInput.classList.add('marea-date-input');
+            instance.altInput.style.paddingRight = '38px';
+          }
+        },
+        onChange: (selectedDates) => {
+          const date = selectedDates[0];
+          const newValue = date ? this.formatDate(date) : null;
+          this.value = newValue;
+          this.onChange(newValue);
+          this.onTouched();
+        },
+        onClose: () => {
+          this.onTouched();
+        },
+      });
+    } catch (e) {
+      console.error('[DatePicker] Error al inicializar flatpickr:', e);
+    }
   }
 
   ngOnDestroy() {

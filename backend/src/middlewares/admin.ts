@@ -1,10 +1,11 @@
 import { Response, NextFunction } from 'express';
 import { prisma } from '../lib/prisma.js';
 import { AuthRequest } from './auth.js';
+import { AppError } from './error.js';
 
 export const adminMiddleware = async (
   req: AuthRequest,
-  res: Response,
+  _res: Response,
   next: NextFunction
 ): Promise<void> => {
   const usuario = await prisma.usuario.findUnique({
@@ -13,8 +14,7 @@ export const adminMiddleware = async (
   });
 
   if (!usuario || usuario.rol !== 'ADMIN') {
-    res.status(403).json({ error: 'Acceso denegado: se requieren permisos de administrador' });
-    return;
+    throw new AppError(403, 'Acceso denegado: se requieren permisos de administrador');
   }
 
   req.usuarioRol = usuario.rol;

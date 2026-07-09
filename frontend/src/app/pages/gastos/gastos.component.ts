@@ -1,6 +1,7 @@
 import { Component, OnInit, HostListener, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 import { GastoService } from '../../services/gasto.service';
 import { TarjetaService } from '../../services/tarjeta.service';
 import { CategoriaService } from '../../services/categoria.service';
@@ -9,18 +10,20 @@ import { ConfirmService } from '../../services/confirm.service';
 import { DatePickerComponent } from '../../components/date-picker/date-picker.component';
 import { Gasto, TarjetaCredito, Categoria } from '../../models';
 import { toInputDate, validarDescripcion, validarMontoPositivo } from '../../core/utils/form-utils';
-import { presets } from '../../core/utils/date-presets';
-import calcularRango from '../../core/utils/date-presets';
+import calcularRango, { presets } from '../../core/utils/date-presets';
 
 @Component({
   selector: 'app-gastos',
   standalone: true,
-  imports: [CommonModule, FormsModule, DatePickerComponent],
+  imports: [CommonModule, FormsModule, RouterLink, DatePickerComponent],
   template: `
     <div class="demo-topbar">
-      <div>
+      <div *ngIf="hogarId">
         <div class="eyebrow">Movimientos</div>
         <div class="sec-title">Gastos</div>
+      </div>
+      <div *ngIf="!hogarId">
+        <div style="font-family:var(--font-display); font-weight:700; font-size:19px;">Gastos</div>
       </div>
     </div>
 
@@ -126,15 +129,21 @@ import calcularRango from '../../core/utils/date-presets';
       <button *ngIf="filtroActivo" type="button" class="btn btn-secondary btn-md" (click)="limpiarFiltro()">Limpiar</button>
     </div>
 
+    <div *ngIf="!hogarId" class="no-hogar">
+      <h3>Seleccioná un hogar</h3>
+      <p>Necesitás seleccionar o crear un hogar para empezar a registrar gastos.</p>
+      <button type="button" class="btn btn-primary btn-md" routerLink="/hogares">Ir a hogares</button>
+    </div>
+
     <div *ngIf="hogarId && !gastos.length" class="no-hogar">
       <h3>Todavía no cargaste gastos</h3>
       <p>Registrá tu primer gasto para empezar a controlar tus finanzas.</p>
     </div>
 
-    <div *ngIf="gastos.length" class="card" style="padding:6px 4px;">
+    <div *ngIf="hogarId && gastos.length" class="card" style="padding:6px 4px;">
       <table class="tx">
-        <tr><th>Descripción</th><th>Monto</th><th>Tipo</th><th>Fecha</th><th>Cuotas</th><th>Categoría</th><th>Tarjeta</th><th style="text-align:right;">Acciones</th></tr>
-        <tr *ngFor="let g of gastos">
+        <thead><tr><th>Descripción</th><th>Monto</th><th>Tipo</th><th>Fecha</th><th>Cuotas</th><th>Categoría</th><th>Tarjeta</th><th style="text-align:right;">Acciones</th></tr></thead>
+        <tbody><tr *ngFor="let g of gastos">
           <td data-label="Descripción"><div class="tx-name"><span class="tx-icon" style="background:var(--primary-50); color:var(--primary-700);">$</span>{{ g.descripcion || '-' }}</div></td>
           <td data-label="Monto" class="amt-neg">
             <div *ngIf="g.cuotasTotales; else montoSimple" style="display:flex; flex-direction:column; line-height:1.3;">
@@ -151,7 +160,10 @@ import calcularRango from '../../core/utils/date-presets';
           <td data-label="Cuotas">
             <span *ngIf="g.cuotasTotales">{{ g.cuotasPagadas || 0 }}/{{ g.cuotasTotales }}</span>
             <span *ngIf="!g.cuotasTotales">-</span>
-            <button *ngIf="g.cuotasTotales && (g.cuotasPagadas || 0) < g.cuotasTotales" type="button" class="btn btn-secondary btn-sm" (click)="pagarCuota(g.id)">+1</button>
+            <div *ngIf="g.cuotasTotales" style="display:inline-flex; flex-direction:column; gap:2px; margin-left:6px; vertical-align:middle;">
+              <button *ngIf="(g.cuotasPagadas || 0) < g.cuotasTotales" type="button" class="btn-chip btn-chip-ok" (click)="pagarCuota(g.id)" title="Pagar cuota">+</button>
+              <button *ngIf="(g.cuotasPagadas || 0) > 0" type="button" class="btn-chip btn-chip-ghost" (click)="deshacerCuota(g.id)" title="Deshacer cuota pagada">−</button>
+            </div>
           </td>
           <td data-label="Categoría">
             <span *ngIf="g.categoria" style="display:inline-flex; align-items:center; gap:4px;">
@@ -165,7 +177,7 @@ import calcularRango from '../../core/utils/date-presets';
             <button type="button" class="btn btn-ghost btn-sm" (click)="editar(g)">Editar</button>
             <button type="button" class="btn btn-danger btn-sm" (click)="eliminar(g.id)">Eliminar</button>
           </td>
-        </tr>
+        </tr></tbody>
       </table>
     </div>
   `
@@ -331,6 +343,10 @@ export class GastosComponent implements OnInit {
 
   pagarCuota(id: string) {
     this.gastoService.pagarCuota(id).subscribe(() => { this.cargarDatos(); this.aplicarPreset(this.filtroPreset); });
+  }
+
+  deshacerCuota(id: string) {
+    this.gastoService.deshacerCuota(id).subscribe(() => { this.cargarDatos(); this.aplicarPreset(this.filtroPreset); });
   }
 
   async eliminar(id: string) {

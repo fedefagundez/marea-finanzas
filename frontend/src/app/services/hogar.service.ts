@@ -33,4 +33,8 @@ export class HogarService {
   eliminar(hogarId: string): Observable<{ mensaje: string }> {
     return this.http.delete<{ mensaje: string }>(`${this.apiUrl}/${hogarId}`);
   }
+
+  quitarMiembro(hogarId: string, miembroId: string): Observable<{ mensaje: string }> {
+    return this.http.delete<{ mensaje: string }>(`${this.apiUrl}/${hogarId}/miembros/${miembroId}`);
+  }
 }

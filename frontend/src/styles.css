@@ -390,12 +390,13 @@ footer{margin-top:80px; padding-top:24px; border-top:1px solid var(--border); fo
 
 /* ========== RESPONSIVE ========== */
 @media (max-width: 768px) {
-  .shell { grid-template-columns: 1fr; }
+  .shell { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
   .mobile-header {
     display: flex; align-items: center; justify-content: space-between;
     position: sticky; top: 0; z-index: 100;
     padding: 12px 16px; background: var(--surface);
     border-bottom: 1px solid var(--border);
+    height: 57px;
   }
   .mobile-header .brand { padding: 0; }
   .mobile-header .brand svg { width: 28px; height: 28px; }
@@ -650,3 +651,10 @@ footer{margin-top:80px; padding-top:24px; border-top:1px solid var(--border); fo
 .flatpickr-time input{background:var(--surface); color:var(--text-1);}
 .flatpickr-time .numInputWrapper span.arrowUp:after{border-bottom-color:var(--text-2);}
 .flatpickr-time .numInputWrapper span.arrowDown:after{border-top-color:var(--text-2);}
+
+/* ========== CUOTA CHIPS ========== */
+.btn-chip{display:inline-flex; align-items:center; justify-content:center; width:20px; height:20px; border-radius:50%; border:1.5px solid; font-size:13px; font-weight:700; line-height:1; cursor:pointer; padding:0; transition:background .12s, box-shadow .12s;}
+.btn-chip-ok{background:var(--success-100); border-color:var(--success-400); color:var(--success-700);}
+.btn-chip-ok:hover{background:var(--success-200); box-shadow:0 0 0 3px var(--success-100);}
+.btn-chip-ghost{background:transparent; border-color:var(--n-400); color:var(--text-3);}
+.btn-chip-ghost:hover{background:var(--n-100); border-color:var(--n-500); color:var(--text-2);}

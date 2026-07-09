@@ -46,6 +46,7 @@ export class ForgotPasswordComponent {
   cargando = false;
 
   enviar() {
+    this.email = this.email.trim();
     if (!this.email) {
       this.toast.show('Ingresá tu email', 'error');
       return;
