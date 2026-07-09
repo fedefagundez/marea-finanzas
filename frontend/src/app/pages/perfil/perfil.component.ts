@@ -111,6 +111,28 @@ import { Usuario } from '../../models';
             Formatos aceptados: .csv
           </p>
         </div>
+
+        <div style="margin-top:16px; border-top:1px solid var(--border); padding-top:16px;">
+          <label style="font-size:13px; font-weight:600; color:var(--text-2); display:block; margin-bottom:8px;">
+            Restaurar CSV completo
+          </label>
+          <p style="font-size:12px; color:var(--text-3); margin-bottom:8px;">
+            Creá un hogar y restaurá todos los datos desde un CSV exportado.
+          </p>
+          <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+            <input #restoreFileInput type="file" accept=".csv" (change)="onRestoreArchivoSeleccionado($event)" hidden />
+            <button type="button" class="btn btn-secondary btn-md" (click)="restoreFileInput.click()">
+              {{ archivoRestaurar ? archivoRestaurar.name : 'Seleccionar archivo' }}
+            </button>
+            <button type="button" class="btn btn-primary btn-md"
+              (click)="restaurarCsv()" [disabled]="!archivoRestaurar || restaurando">
+              {{ restaurando ? 'Restaurando…' : 'Restaurar' }}
+            </button>
+            <button *ngIf="archivoRestaurar" type="button" class="btn btn-secondary btn-md" (click)="limpiarRestore()" style="font-size:12px; padding:0 12px;">
+              ✕
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   `
@@ -129,6 +151,8 @@ export class PerfilComponent implements OnInit {
   exportando = false;
   importando = false;
   archivoImportar: File | null = null;
+  restaurando = false;
+  archivoRestaurar: File | null = null;
 
   ngOnInit() {
     this.cargarPerfil();
@@ -235,6 +259,36 @@ export class PerfilComponent implements OnInit {
       error: (err) => {
         this.importando = false;
         this.toast.showApiError(err, 'Error al importar');
+      }
+    });
+  }
+
+  onRestoreArchivoSeleccionado(event: Event) {
+    const input = event.target as HTMLInputElement;
+    this.archivoRestaurar = input.files?.item(0) ?? null;
+  }
+
+  limpiarRestore() {
+    this.archivoRestaurar = null;
+    const input = document.querySelector<HTMLInputElement>('input[type="file"][accept=".csv"]');
+    if (input) input.value = '';
+  }
+
+  restaurarCsv() {
+    if (!this.archivoRestaurar) return;
+    this.restaurando = true;
+    this.reporteService.restaurarCsv(this.archivoRestaurar).subscribe({
+      next: (res) => {
+        this.restaurando = false;
+        this.archivoRestaurar = null;
+        this.toast.show(res.mensaje, 'success');
+        if (res.errores?.length) {
+          console.warn('Errores de restauración:', res.errores);
+        }
+      },
+      error: (err) => {
+        this.restaurando = false;
+        this.toast.showApiError(err, 'Error al restaurar');
       }
     });
   }
