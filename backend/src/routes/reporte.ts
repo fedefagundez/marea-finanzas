@@ -295,22 +295,26 @@ router.get('/hogar/:hogarId/exportar-csv', authMiddleware, asyncHandler(async (r
 
   const hogarId = req.params.hogarId;
 
-  const [ingresos, gastos, metas] = await Promise.all([
+  const [ingresos, gastos, metas, tarjetas] = await Promise.all([
     prisma.ingreso.findMany({
       where: { hogarId },
       include: { usuario: { select: { username: true } } },
     }),
     prisma.gasto.findMany({
       where: { hogarId },
-      include: { categoria: { select: { nombre: true, icon: true } }, usuario: { select: { username: true } } },
+      include: { categoria: { select: { nombre: true, icon: true } }, usuario: { select: { username: true } }, tarjeta: { select: { nombre: true, ultimo4: true } } },
     }),
     prisma.meta.findMany({
       where: { hogarId },
       include: { usuario: { select: { username: true } } },
     }),
+    prisma.tarjetaCredito.findMany({ where: { hogarId } }),
   ]);
 
-  const rows: string[] = ['tipo_movimiento,descripcion,monto,tipo,fecha,categoria,usuario,monto_objetivo,monto_actual,fecha_limite'];
+  const tarjetaMap = new Map(tarjetas.map(t => [t.id, `${t.nombre} (****${t.ultimo4})`]));
+
+  const header = 'tipo_movimiento,descripcion,monto,tipo,fecha_inicio,fecha_fin,categoria,usuario,tarjeta,cuotas_totales,cuotas_pagadas,monto_objetivo,monto_actual,fecha_limite,cuota_mensual,created_at';
+  const rows: string[] = [header];
 
   for (const ing of ingresos) {
     rows.push([
@@ -319,9 +323,12 @@ router.get('/hogar/:hogarId/exportar-csv', authMiddleware, asyncHandler(async (r
       csvEscape(Number(ing.monto)),
       csvEscape(ing.tipo),
       csvEscape(ing.fechaInicio ? format(ing.fechaInicio, 'yyyy-MM-dd') : ''),
+      csvEscape(ing.fechaFin ? format(ing.fechaFin, 'yyyy-MM-dd') : ''),
       '',
       csvEscape(ing.usuario?.username ?? ''),
       '', '', '',
+      '', '', '', '',
+      csvEscape(ing.createdAt ? format(ing.createdAt, 'yyyy-MM-dd HH:mm:ss') : ''),
     ].join(','));
   }
 
@@ -332,9 +339,14 @@ router.get('/hogar/:hogarId/exportar-csv', authMiddleware, asyncHandler(async (r
       csvEscape(Number(g.monto)),
       csvEscape(g.tipo),
       csvEscape(g.fechaInicio ? format(g.fechaInicio, 'yyyy-MM-dd') : ''),
+      '',
       csvEscape(g.categoria ? `${g.categoria.icon} ${g.categoria.nombre}` : ''),
       csvEscape(g.usuario?.username ?? ''),
-      '', '', '',
+      csvEscape(g.tarjetaId ? (tarjetaMap.get(g.tarjetaId) ?? '') : ''),
+      csvEscape(g.cuotasTotales ?? ''),
+      csvEscape(g.cuotasPagadas),
+      '', '', '', '',
+      csvEscape(g.createdAt ? format(g.createdAt, 'yyyy-MM-dd HH:mm:ss') : ''),
     ].join(','));
   }
 
@@ -342,14 +354,17 @@ router.get('/hogar/:hogarId/exportar-csv', authMiddleware, asyncHandler(async (r
     rows.push([
       'META',
       csvEscape(m.nombre),
-      '',
-      '',
+      '', '', '',
       '',
       '',
       csvEscape(m.usuario?.username ?? ''),
+      '',
+      '', '',
       csvEscape(Number(m.montoObjetivo)),
       csvEscape(Number(m.montoActual)),
       csvEscape(format(m.fechaLimite, 'yyyy-MM-dd')),
+      csvEscape(m.cuotaMensual ? Number(m.cuotaMensual) : ''),
+      csvEscape(m.createdAt ? format(m.createdAt, 'yyyy-MM-dd HH:mm:ss') : ''),
     ].join(','));
   }
 
@@ -373,15 +388,22 @@ router.post('/hogar/:hogarId/importar-csv', authMiddleware, upload.single('archi
   if (lineas.length < 2) throw new AppError(400, 'El CSV está vacío');
 
   const cabeceras = lineas[0].split(',').map(h => h.trim().toLowerCase());
-  const idxTipoMov = cabeceras.indexOf('tipo_movimiento');
-  const idxDesc = cabeceras.indexOf('descripcion');
-  const idxMonto = cabeceras.indexOf('monto');
-  const idxFecha = cabeceras.indexOf('fecha');
-  const idxTipo = cabeceras.indexOf('tipo');
-  const idxCategoria = cabeceras.indexOf('categoria');
-  const idxMontoObj = cabeceras.indexOf('monto_objetivo');
-  const idxMontoAct = cabeceras.indexOf('monto_actual');
-  const idxFechaLim = cabeceras.indexOf('fecha_limite');
+  const idx = (name: string) => cabeceras.indexOf(name);
+
+  const idxTipoMov = idx('tipo_movimiento');
+  const idxDesc = idx('descripcion');
+  const idxMonto = idx('monto');
+  const idxFecha = idx('fecha_inicio') !== -1 ? idx('fecha_inicio') : idx('fecha');
+  const idxFechaFin = idx('fecha_fin');
+  const idxTipo = idx('tipo');
+  const idxCategoria = idx('categoria');
+  const idxTarjeta = idx('tarjeta');
+  const idxCuotasTotales = idx('cuotas_totales');
+  const idxCuotasPagadas = idx('cuotas_pagadas');
+  const idxMontoObj = idx('monto_objetivo');
+  const idxMontoAct = idx('monto_actual');
+  const idxFechaLim = idx('fecha_limite');
+  const idxCuotaMensual = idx('cuota_mensual');
 
   if (idxTipoMov === -1 || idxDesc === -1) {
     throw new AppError(400, 'El CSV debe tener las columnas: tipo_movimiento, descripcion');
@@ -397,6 +419,7 @@ router.post('/hogar/:hogarId/importar-csv', authMiddleware, upload.single('archi
     const montoRaw = (cols[idxMonto] ?? '').trim().replace(/[$,]/g, '');
     const monto = parseFloat(montoRaw);
     const fecha = idxFecha !== -1 ? (cols[idxFecha] ?? '').trim() : '';
+    const fechaFinRaw = idxFechaFin !== -1 ? (cols[idxFechaFin] ?? '').trim() : '';
     const tipo = idxTipo !== -1 ? (cols[idxTipo] ?? '').trim().toUpperCase() : 'PUNTUAL';
 
     if (tipoMov === 'META') {
@@ -405,6 +428,8 @@ router.post('/hogar/:hogarId/importar-csv', authMiddleware, upload.single('archi
       const montoActRaw = idxMontoAct !== -1 ? (cols[idxMontoAct] ?? '').trim().replace(/[$,]/g, '') : '';
       const montoAct = parseFloat(montoActRaw);
       const fechaLim = idxFechaLim !== -1 ? (cols[idxFechaLim] ?? '').trim() : '';
+      const cuotaMensualRaw = idxCuotaMensual !== -1 ? (cols[idxCuotaMensual] ?? '').trim().replace(/[$,]/g, '') : '';
+      const cuotaMensual = parseFloat(cuotaMensualRaw);
 
       if (!descripcion || isNaN(montoObj) || montoObj <= 0) {
         errores.push(`Línea ${i + 1}: meta sin nombre o monto_objetivo inválido`);
@@ -420,6 +445,7 @@ router.post('/hogar/:hogarId/importar-csv', authMiddleware, upload.single('archi
             montoObjetivo: montoObj,
             montoActual: isNaN(montoAct) || montoAct < 0 ? 0 : montoAct,
             fechaLimite: fechaLim ? new Date(fechaLim) : new Date(),
+            cuotaMensual: isNaN(cuotaMensual) ? null : cuotaMensual,
           },
         });
         creados++;
@@ -440,8 +466,25 @@ router.post('/hogar/:hogarId/importar-csv', authMiddleware, upload.single('archi
     }
 
     const tipoValido = ['PUNTUAL', 'RECURRENTE', 'INDEFINIDO'].includes(tipo) ? tipo : 'PUNTUAL';
-
     const fechaInicio = fecha ? new Date(fecha) : undefined;
+    const fechaFin = fechaFinRaw ? new Date(fechaFinRaw) : undefined;
+
+    const cuotasTotalesRaw = idxCuotasTotales !== -1 ? (cols[idxCuotasTotales] ?? '').trim() : '';
+    const cuotasTotales = parseInt(cuotasTotalesRaw, 10);
+    const cuotasPagadasRaw = idxCuotasPagadas !== -1 ? (cols[idxCuotasPagadas] ?? '').trim() : '';
+    const cuotasPagadas = parseInt(cuotasPagadasRaw, 10);
+
+    let tarjetaId: string | undefined;
+
+    if (idxTarjeta !== -1 && tipoMov === 'GASTO') {
+      const tarjetaStr = (cols[idxTarjeta] ?? '').trim();
+      if (tarjetaStr) {
+        const tarjetaExistente = await prisma.tarjetaCredito.findFirst({
+          where: { hogarId, nombre: tarjetaStr.split(' (****')[0] },
+        });
+        if (tarjetaExistente) tarjetaId = tarjetaExistente.id;
+      }
+    }
 
     try {
       if (tipoMov === 'INGRESO') {
@@ -453,6 +496,7 @@ router.post('/hogar/:hogarId/importar-csv', authMiddleware, upload.single('archi
             monto,
             tipo: tipoValido as 'PUNTUAL' | 'RECURRENTE' | 'INDEFINIDO',
             fechaInicio,
+            fechaFin,
           },
         });
       } else {
@@ -464,6 +508,9 @@ router.post('/hogar/:hogarId/importar-csv', authMiddleware, upload.single('archi
             monto,
             tipo: tipoValido as 'PUNTUAL' | 'RECURRENTE' | 'INDEFINIDO',
             fechaInicio,
+            cuotasTotales: !isNaN(cuotasTotales) && cuotasTotales > 0 ? cuotasTotales : null,
+            cuotasPagadas: !isNaN(cuotasPagadas) && cuotasPagadas >= 0 ? cuotasPagadas : 0,
+            tarjetaId,
           },
         });
       }
