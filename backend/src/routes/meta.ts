@@ -2,11 +2,18 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
 import { verificarMiembro } from '../lib/auth.js';
+import { serializeDecimal } from '../lib/serializers.js';
 import { AppError } from '../middlewares/error.js';
 import { asyncHandler } from '../lib/asyncHandler.js';
 import { authMiddleware, AuthRequest } from '../middlewares/auth.js';
 
 const router = Router();
+
+const serializeMeta = (meta: { montoObjetivo: unknown; montoActual: unknown; cuotaMensual: unknown }) => ({
+  ...serializeDecimal(meta, 'montoObjetivo'),
+  ...serializeDecimal(meta, 'montoActual'),
+  cuotaMensual: meta.cuotaMensual ? Number(meta.cuotaMensual) : null,
+});
 
 const createMetaSchema = z.object({
   hogarId: z.string().uuid(),
@@ -35,7 +42,7 @@ router.get('/hogar/:hogarId', authMiddleware, asyncHandler(async (req: AuthReque
     orderBy: { createdAt: 'desc' },
   });
 
-  res.json(metas.map(m => ({ ...m, montoObjetivo: Number(m.montoObjetivo), montoActual: Number(m.montoActual), cuotaMensual: m.cuotaMensual ? Number(m.cuotaMensual) : null })));
+  res.json(metas.map(serializeMeta));
 }));
 
 router.post('/', authMiddleware, asyncHandler(async (req: AuthRequest, res) => {
@@ -54,7 +61,7 @@ router.post('/', authMiddleware, asyncHandler(async (req: AuthRequest, res) => {
     },
   });
 
-  res.status(201).json({ ...meta, montoObjetivo: Number(meta.montoObjetivo), montoActual: Number(meta.montoActual), cuotaMensual: meta.cuotaMensual ? Number(meta.cuotaMensual) : null });
+  res.status(201).json(serializeMeta(meta));
 }));
 
 router.put('/:id', authMiddleware, asyncHandler(async (req: AuthRequest, res) => {
@@ -71,10 +78,11 @@ router.put('/:id', authMiddleware, asyncHandler(async (req: AuthRequest, res) =>
       ...data,
       fechaLimite: data.fechaLimite ? new Date(data.fechaLimite) : undefined,
       cuotaMensual: data.cuotaMensual === undefined ? undefined : data.cuotaMensual,
+      gastoId: data.gastoId === undefined ? undefined : data.gastoId,
     },
   });
 
-  res.json({ ...actualizada, montoObjetivo: Number(actualizada.montoObjetivo), montoActual: Number(actualizada.montoActual), cuotaMensual: actualizada.cuotaMensual ? Number(actualizada.cuotaMensual) : null });
+  res.json(serializeMeta(actualizada));
 }));
 
 router.delete('/:id', authMiddleware, asyncHandler(async (req: AuthRequest, res) => {

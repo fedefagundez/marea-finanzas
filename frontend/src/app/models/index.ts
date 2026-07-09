@@ -32,6 +32,7 @@ export interface TarjetaCredito {
   id: string;
   nombre: string;
   ultimo4: string;
+  diaCierre?: number;
   hogarId: string;
 }
 
@@ -39,6 +40,7 @@ export interface TarjetaResumen {
   id: string;
   nombre: string;
   ultimo4: string;
+  diaCierre?: number;
 }
 
 export interface Ingreso {

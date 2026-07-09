@@ -5,9 +5,10 @@ import { ToastService } from '../../services/toast.service';
 import { GastoService } from '../../services/gasto.service';
 import { MetaService } from '../../services/meta.service';
 import { ConfirmService } from '../../services/confirm.service';
+import { CategoriaService } from '../../services/categoria.service';
 import { DatePickerComponent } from '../../components/date-picker/date-picker.component';
 import { hoyInputDate, validarNombre, validarMontoPositivo } from '../../core/utils/form-utils';
-import { Meta } from '../../models';
+import { Meta, Categoria } from '../../models';
 
 @Component({
   selector: 'app-metas',
@@ -110,10 +111,12 @@ export class MetasComponent implements OnInit {
   private gastoService = inject(GastoService);
   private metaService = inject(MetaService);
   private confirmService = inject(ConfirmService);
+  private categoriaService = inject(CategoriaService);
 
   hogarId = '';
   metas: Meta[] = [];
   montoAhorro: { [key: string]: number } = {};
+  private categoriaMetaId: string | null = null;
 
   nueva: { nombre: string; montoObjetivo: number; fechaLimite: string; cuotaMensual: number } = {
     nombre: '', montoObjetivo: 0, fechaLimite: '', cuotaMensual: 0
@@ -121,11 +124,22 @@ export class MetasComponent implements OnInit {
 
   ngOnInit() {
     this.hogarId = localStorage.getItem('hogarId') || '';
-    if (this.hogarId) this.cargarMetas();
+    if (this.hogarId) {
+      this.cargarMetas();
+      this.cargarCategoriaMeta();
+    }
   }
 
   private cargarMetas() {
     this.metaService.listar(this.hogarId).subscribe(m => this.metas = m);
+  }
+
+  private cargarCategoriaMeta() {
+    if (!this.hogarId) return;
+    this.categoriaService.listar(this.hogarId).subscribe(cats => {
+      const meta = cats.find(c => c.nombre === 'Metas');
+      this.categoriaMetaId = meta?.id ?? null;
+    });
   }
 
   private crearGastoMeta(m: Meta): Promise<string | undefined> {
@@ -138,6 +152,7 @@ export class MetasComponent implements OnInit {
         monto: cuota,
         tipo: 'RECURRENTE',
         fechaInicio: hoyInputDate(),
+        categoriaId: this.categoriaMetaId ?? undefined,
       }).subscribe({
         next: (g) => resolve(g.id),
         error: () => resolve(undefined)
@@ -189,15 +204,16 @@ export class MetasComponent implements OnInit {
       cuotaMensual: cuota,
     }).subscribe({
       next: async (meta) => {
+        let gastoId: string | undefined;
         if (cuota) {
-          const gastoId = await this.crearGastoMeta(meta);
+          gastoId = await this.crearGastoMeta(meta);
           if (gastoId) {
             this.metaService.actualizar(meta.id, { gastoId }).subscribe(m => {
               this.metas = [m, ...this.metas.filter(x => x.id !== m.id)];
             });
           }
         }
-        this.metas = [meta, ...this.metas];
+        if (!gastoId) this.metas = [meta, ...this.metas];
         this.nueva = { nombre: '', montoObjetivo: 0, fechaLimite: '', cuotaMensual: 0 };
         this.toast.show('Meta creada', 'success');
       },
@@ -257,6 +273,16 @@ export class MetasComponent implements OnInit {
     this.metaService.actualizar(m.id, { montoActual: nuevoActual }).subscribe(m2 => {
       this.metas = this.metas.map(x => x.id === m2.id ? m2 : x);
       this.montoAhorro[m.id] = 0;
+
+      this.gastoService.crear({
+        hogarId: this.hogarId,
+        descripcion: `Ahorro: ${m.nombre}`,
+        monto,
+        tipo: 'PUNTUAL',
+        fechaInicio: hoyInputDate(),
+        categoriaId: this.categoriaMetaId ?? undefined,
+      }).subscribe();
+
       this.toast.show('Ahorro registrado', 'success');
     });
   }

@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
 import { verificarMiembro } from '../lib/auth.js';
 import { serializeDecimal } from '../lib/serializers.js';
+import { esIngresoVigente } from '../lib/calculos.js';
 import { AppError } from '../middlewares/error.js';
 import { asyncHandler } from '../lib/asyncHandler.js';
 import { authMiddleware, AuthRequest } from '../middlewares/auth.js';
@@ -54,20 +55,17 @@ router.get('/hogar/:hogarId', authMiddleware, asyncHandler(async (req: AuthReque
 
   const { desde, hasta } = req.query;
 
-  const where: { hogarId: string; fechaInicio?: { gte?: Date; lte?: Date } } = {
-    hogarId: req.params.hogarId,
-  };
-
-  if (desde || hasta) {
-    where.fechaInicio = {};
-    if (desde) where.fechaInicio.gte = new Date(desde as string);
-    if (hasta) where.fechaInicio.lte = new Date(hasta as string);
-  }
-
-  const ingresos = await prisma.ingreso.findMany({
-    where,
+  let ingresos = await prisma.ingreso.findMany({
+    where: { hogarId: req.params.hogarId },
     orderBy: { fechaInicio: 'desc' },
   });
+
+  if (desde || hasta) {
+    const inicio = desde ? new Date(desde as string) : new Date(0);
+    const fin = hasta ? new Date(hasta as string) : new Date('2100-01-01');
+
+    ingresos = ingresos.filter(i => esIngresoVigente(i, inicio, fin));
+  }
 
   res.json(ingresos.map(serializeIngreso));
 }));

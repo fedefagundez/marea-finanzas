@@ -91,6 +91,12 @@ import { validarNombre, validarUltimos4 } from '../../core/utils/form-utils';
           <div class="field" style="width:120px;">
             <input type="text" [(ngModel)]="tarjetaUltimo4" name="ultimo4" placeholder="Últimos 4" maxlength="4" pattern="\\d{4}" required />
           </div>
+          <div class="field" style="width:100px;">
+            <select [(ngModel)]="tarjetaDiaCierre" name="diaCierre">
+              <option value="">Sin cierre</option>
+              <option *ngFor="let d of diasMes" [value]="d">Cierre día {{ d }}</option>
+            </select>
+          </div>
           <button type="submit" class="btn btn-secondary btn-sm">Agregar</button>
         </form>
         <div *ngIf="(h.tarjetas || []).length === 0" style="color:var(--text-3); font-size:13px;">
@@ -98,7 +104,7 @@ import { validarNombre, validarUltimos4 } from '../../core/utils/form-utils';
         </div>
         <div *ngFor="let t of h.tarjetas || []" style="display:flex; justify-content:space-between; align-items:center; gap:8px; padding:10px 12px; margin-bottom:6px; border-radius:var(--radius-sm); font-size:13.5px; background:var(--surface-2);">
           <ng-container *ngIf="tarjetaEditandoId !== t.id; else editandoTarjeta">
-            <span><span class="badge badge-neutral">{{ t.ultimo4 }}</span> {{ t.nombre }}</span>
+            <span><span class="badge badge-neutral">{{ t.ultimo4 }}</span> {{ t.nombre }}<span *ngIf="t.diaCierre" class="badge badge-info" style="margin-left:6px;">Cierre día {{ t.diaCierre }}</span></span>
             <div style="display:flex; gap:8px;">
               <button type="button" class="btn btn-ghost btn-sm" (click)="iniciarEdicionTarjeta(t)">Editar</button>
               <button type="button" class="btn btn-danger btn-sm" (click)="eliminarTarjeta(t.id)">Eliminar</button>
@@ -110,6 +116,12 @@ import { validarNombre, validarUltimos4 } from '../../core/utils/form-utils';
             </div>
             <div class="field" style="width:120px;">
               <input type="text" [(ngModel)]="tarjetaEditUltimo4" name="editUltimo4{{t.id}}" placeholder="Últimos 4" maxlength="4" />
+            </div>
+            <div class="field" style="width:100px;">
+              <select [(ngModel)]="tarjetaEditDiaCierre" name="editDiaCierre{{t.id}}">
+                <option value="">Sin cierre</option>
+                <option *ngFor="let d of diasMes" [value]="d">Cierre día {{ d }}</option>
+              </select>
             </div>
             <div style="display:flex; gap:8px;">
               <button type="button" class="btn btn-primary btn-sm" (click)="guardarEdicionTarjeta(t.id)">Guardar</button>
@@ -134,11 +146,14 @@ export class HogaresComponent implements OnInit {
   nuevoNombre = '';
   tokenInvitacion = '';
   linkInvitacion = '';
+  readonly diasMes = Array.from({ length: 31 }, (_, i) => i + 1);
   tarjetaNombre = '';
   tarjetaUltimo4 = '';
+  tarjetaDiaCierre = '';
   tarjetaEditandoId = '';
   tarjetaEditNombre = '';
   tarjetaEditUltimo4 = '';
+  tarjetaEditDiaCierre = '';
 
   ngOnInit() {
     this.hogarSeleccionado = localStorage.getItem('hogarId') || '';
@@ -274,10 +289,13 @@ export class HogaresComponent implements OnInit {
     const ultimo4 = this.tarjetaUltimo4.trim();
     if (!this.validarTarjeta(nombre, ultimo4)) return;
 
-    this.tarjetaService.crear(hogarId, nombre, ultimo4).subscribe({
+    const diaCierre = this.tarjetaDiaCierre ? parseInt(this.tarjetaDiaCierre) : undefined;
+
+    this.tarjetaService.crear(hogarId, nombre, ultimo4, diaCierre).subscribe({
       next: () => {
         this.tarjetaNombre = '';
         this.tarjetaUltimo4 = '';
+        this.tarjetaDiaCierre = '';
         this.toast.show('Tarjeta agregada', 'success');
         this.cargarHogares();
       },
@@ -299,12 +317,14 @@ export class HogaresComponent implements OnInit {
     this.tarjetaEditandoId = t.id;
     this.tarjetaEditNombre = t.nombre;
     this.tarjetaEditUltimo4 = t.ultimo4;
+    this.tarjetaEditDiaCierre = t.diaCierre ? String(t.diaCierre) : '';
   }
 
   cancelarEdicionTarjeta() {
     this.tarjetaEditandoId = '';
     this.tarjetaEditNombre = '';
     this.tarjetaEditUltimo4 = '';
+    this.tarjetaEditDiaCierre = '';
   }
 
   guardarEdicionTarjeta(id: string) {
@@ -312,7 +332,9 @@ export class HogaresComponent implements OnInit {
     const ultimo4 = this.tarjetaEditUltimo4.trim();
     if (!this.validarTarjeta(nombre, ultimo4)) return;
 
-    this.tarjetaService.actualizar(id, { nombre, ultimo4 }).subscribe({
+    const diaCierre = this.tarjetaEditDiaCierre ? parseInt(this.tarjetaEditDiaCierre) : undefined;
+
+    this.tarjetaService.actualizar(id, { nombre, ultimo4, diaCierre }).subscribe({
       next: () => {
         this.cancelarEdicionTarjeta();
         this.toast.show('Tarjeta actualizada', 'success');

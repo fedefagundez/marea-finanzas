@@ -10,8 +10,7 @@ import { ConfirmService } from '../../services/confirm.service';
 import { DatePickerComponent } from '../../components/date-picker/date-picker.component';
 import { Gasto, TarjetaCredito, Categoria } from '../../models';
 import { toInputDate, validarDescripcion, validarMontoPositivo } from '../../core/utils/form-utils';
-import { presets } from '../../core/utils/date-presets';
-import calcularRango from '../../core/utils/date-presets';
+import calcularRango, { presets } from '../../core/utils/date-presets';
 
 @Component({
   selector: 'app-gastos',
@@ -161,7 +160,10 @@ import calcularRango from '../../core/utils/date-presets';
           <td data-label="Cuotas">
             <span *ngIf="g.cuotasTotales">{{ g.cuotasPagadas || 0 }}/{{ g.cuotasTotales }}</span>
             <span *ngIf="!g.cuotasTotales">-</span>
-            <button *ngIf="g.cuotasTotales && (g.cuotasPagadas || 0) < g.cuotasTotales" type="button" class="btn btn-secondary btn-sm" (click)="pagarCuota(g.id)">+1</button>
+            <div *ngIf="g.cuotasTotales" style="display:inline-flex; flex-direction:column; gap:2px; margin-left:6px; vertical-align:middle;">
+              <button *ngIf="(g.cuotasPagadas || 0) < g.cuotasTotales" type="button" class="btn-chip btn-chip-ok" (click)="pagarCuota(g.id)" title="Pagar cuota">+</button>
+              <button *ngIf="(g.cuotasPagadas || 0) > 0" type="button" class="btn-chip btn-chip-ghost" (click)="deshacerCuota(g.id)" title="Deshacer cuota pagada">−</button>
+            </div>
           </td>
           <td data-label="Categoría">
             <span *ngIf="g.categoria" style="display:inline-flex; align-items:center; gap:4px;">
@@ -341,6 +343,10 @@ export class GastosComponent implements OnInit {
 
   pagarCuota(id: string) {
     this.gastoService.pagarCuota(id).subscribe(() => { this.cargarDatos(); this.aplicarPreset(this.filtroPreset); });
+  }
+
+  deshacerCuota(id: string) {
+    this.gastoService.deshacerCuota(id).subscribe(() => { this.cargarDatos(); this.aplicarPreset(this.filtroPreset); });
   }
 
   async eliminar(id: string) {
