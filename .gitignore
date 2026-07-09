@@ -66,7 +66,7 @@ web_modules/
 .yarn-integrity
 
 # SQLite database (local dev only)
-backend/prisma/dev.db
+backend/prisma/*.db
 
 # dotenv environment variable files
 .env
