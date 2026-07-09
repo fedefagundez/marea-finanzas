@@ -8,8 +8,7 @@ import { ConfirmService } from '../../services/confirm.service';
 import { DatePickerComponent } from '../../components/date-picker/date-picker.component';
 import { Ingreso } from '../../models';
 import { toInputDate, validarDescripcion, validarMontoPositivo } from '../../core/utils/form-utils';
-import { presets } from '../../core/utils/date-presets';
-import calcularRango from '../../core/utils/date-presets';
+import calcularRango, { presets } from '../../core/utils/date-presets';
 
 @Component({
   selector: 'app-ingresos',
@@ -140,14 +139,20 @@ export class IngresosComponent implements OnInit {
     this.filtroDesde = desde;
     this.filtroHasta = hasta;
     this.filtroActivo = true;
-    this.ingresoService.listarPorFiltros(this.hogarId, desde || undefined, hasta || undefined).subscribe(i => this.ingresos = i);
+    this.ingresoService.listarPorFiltros(this.hogarId, {
+      desde: desde || undefined,
+      hasta: hasta || undefined,
+    }).subscribe(i => this.ingresos = i);
   }
 
   aplicarFiltro() {
     if (!this.hogarId) return;
     this.filtroPreset = 'personalizado';
     this.filtroActivo = true;
-    this.ingresoService.listarPorFiltros(this.hogarId, this.filtroDesde || undefined, this.filtroHasta || undefined).subscribe(i => {
+    this.ingresoService.listarPorFiltros(this.hogarId, {
+      desde: this.filtroDesde || undefined,
+      hasta: this.filtroHasta || undefined,
+    }).subscribe(i => {
       this.ingresos = i;
     });
   }

@@ -12,6 +12,7 @@ const tarjetaSchema = z.object({
   hogarId: z.string().uuid(),
   nombre: z.string().min(1).max(50),
   ultimo4: z.string().length(4).regex(/^\d+$/),
+  diaCierre: z.number().int().min(1).max(31).optional(),
 });
 
 const updateTarjetaSchema = tarjetaSchema.omit({ hogarId: true }).partial();
@@ -24,6 +25,7 @@ router.post('/', authMiddleware, asyncHandler(async (req: AuthRequest, res) => {
     data: {
       nombre: data.nombre,
       ultimo4: data.ultimo4,
+      diaCierre: data.diaCierre,
       hogarId: data.hogarId,
     },
   });

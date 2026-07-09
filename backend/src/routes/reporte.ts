@@ -5,7 +5,8 @@ import multer from 'multer';
 import { prisma } from '../lib/prisma.js';
 import { verificarMiembro } from '../lib/auth.js';
 import { calcularTotales } from '../lib/reporte-utils.js';
-import { esGastoVigente } from '../lib/calculos.js';
+import { esGastoVigente, ajustarFechaPorCierre } from '../lib/calculos.js';
+import { csvEscape, csvParseLine } from '../lib/csv-utils.js';
 import { AppError } from '../middlewares/error.js';
 import { asyncHandler } from '../lib/asyncHandler.js';
 import { authMiddleware, AuthRequest } from '../middlewares/auth.js';
@@ -13,10 +14,29 @@ import { authMiddleware, AuthRequest } from '../middlewares/auth.js';
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 2 * 1024 * 1024 } });
 
-const csvEscape = (val: unknown): string => {
-  const s = String(val ?? '');
-  return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-};
+async function obtenerMapaCierre(hogarId: string): Promise<Map<string, number>> {
+  const tarjetas = await prisma.tarjetaCredito.findMany({
+    where: { hogarId },
+    select: { id: true, diaCierre: true },
+  });
+  return new Map(tarjetas.filter(t => t.diaCierre != null).map(t => [t.id, t.diaCierre!]));
+}
+
+function ajustarGastos<T extends { tarjetaId?: string | null; fechaInicio: Date | null }>(
+  gastos: T[],
+  mapaCierre: Map<string, number>,
+) {
+  return gastos.map(g => ajustarFechaPorCierre(g, mapaCierre));
+}
+
+async function cargarDatosReporte(hogarId: string) {
+  const [ingresos, gastos] = await Promise.all([
+    prisma.ingreso.findMany({ where: { hogarId } }),
+    prisma.gasto.findMany({ where: { hogarId } }),
+  ]);
+  const mapaCierre = await obtenerMapaCierre(hogarId);
+  return { ingresos, gastos: ajustarGastos(gastos, mapaCierre) };
+}
 
 router.get('/hogar/:hogarId/dashboard', authMiddleware, asyncHandler(async (req: AuthRequest, res) => {
   await verificarMiembro(req.usuarioId!, req.params.hogarId);
@@ -26,14 +46,11 @@ router.get('/hogar/:hogarId/dashboard', authMiddleware, asyncHandler(async (req:
   const mesActual = startOfMonth(hoy);
   const finMesActual = endOfMonth(hoy);
 
-  const [ingresos, gastos] = await Promise.all([
-    prisma.ingreso.findMany({ where: { hogarId } }),
-    prisma.gasto.findMany({ where: { hogarId } }),
-  ]);
+  const { ingresos, gastos: gastosAjustados } = await cargarDatosReporte(hogarId);
 
   const { totalIngresos, totalGastos, balance } = calcularTotales(
     ingresos,
-    gastos,
+    gastosAjustados,
     mesActual,
     finMesActual
   );
@@ -53,10 +70,7 @@ router.get('/hogar/:hogarId/evolucion', authMiddleware, asyncHandler(async (req:
   const meses = parseInt(req.query.meses as string) || 6;
   const hoy = new Date();
 
-  const [ingresos, gastos] = await Promise.all([
-    prisma.ingreso.findMany({ where: { hogarId } }),
-    prisma.gasto.findMany({ where: { hogarId } }),
-  ]);
+  const { ingresos, gastos: gastosAjustados } = await cargarDatosReporte(hogarId);
 
   const resultados = [];
 
@@ -67,7 +81,7 @@ router.get('/hogar/:hogarId/evolucion', authMiddleware, asyncHandler(async (req:
 
     const { totalIngresos, totalGastos, balance } = calcularTotales(
       ingresos,
-      gastos,
+      gastosAjustados,
       inicio,
       fin
     );
@@ -91,10 +105,7 @@ router.get('/hogar/:hogarId/proyeccion', authMiddleware, asyncHandler(async (req
   const meses = parseInt(req.query.meses as string) || 3;
   const hoy = new Date();
 
-  const [ingresos, gastos] = await Promise.all([
-    prisma.ingreso.findMany({ where: { hogarId } }),
-    prisma.gasto.findMany({ where: { hogarId } }),
-  ]);
+  const { ingresos, gastos: gastosAjustados } = await cargarDatosReporte(hogarId);
 
   const resultados = [];
 
@@ -105,7 +116,7 @@ router.get('/hogar/:hogarId/proyeccion', authMiddleware, asyncHandler(async (req
 
     const { totalIngresos, totalGastos, balance } = calcularTotales(
       ingresos,
-      gastos,
+      gastosAjustados,
       inicio,
       fin,
       { incluirPuntuales: false }
@@ -131,10 +142,7 @@ router.get('/hogar/:hogarId/evolucion-completa', authMiddleware, asyncHandler(as
   const futuro = parseInt(req.query.futuro as string) || 6;
   const hoy = new Date();
 
-  const [ingresos, gastos] = await Promise.all([
-    prisma.ingreso.findMany({ where: { hogarId } }),
-    prisma.gasto.findMany({ where: { hogarId } }),
-  ]);
+  const { ingresos, gastos: gastosAjustados } = await cargarDatosReporte(hogarId);
 
   const data: { mes: string; label: string; ingresos: number; gastos: number; balance: number; tipo: 'REAL' | 'PROYECTADO' }[] = [];
 
@@ -146,7 +154,7 @@ router.get('/hogar/:hogarId/evolucion-completa', authMiddleware, asyncHandler(as
 
     const { totalIngresos, totalGastos, balance } = calcularTotales(
       ingresos,
-      gastos,
+      gastosAjustados,
       inicio,
       fin,
       { incluirPuntuales: !esFuturo }
@@ -180,14 +188,11 @@ router.get('/hogar/:hogarId/balance-mes', authMiddleware, asyncHandler(async (re
   const hoy = new Date();
   const esFuturo = isAfter(inicio, startOfMonth(hoy));
 
-  const [ingresos, gastos] = await Promise.all([
-    prisma.ingreso.findMany({ where: { hogarId } }),
-    prisma.gasto.findMany({ where: { hogarId } }),
-  ]);
+  const { ingresos, gastos: gastosAjustados } = await cargarDatosReporte(hogarId);
 
   const { totalIngresos, totalGastos, balance } = calcularTotales(
     ingresos,
-    gastos,
+    gastosAjustados,
     inicio,
     fin,
     { incluirPuntuales: !esFuturo }
@@ -214,8 +219,10 @@ router.get('/hogar/:hogarId/distribucion-gastos', authMiddleware, asyncHandler(a
     where: { hogarId },
     include: { categoria: { select: { id: true, nombre: true, icon: true } } },
   });
+  const mapaCierre = await obtenerMapaCierre(hogarId);
+  const gastosAjustados = ajustarGastos(gastos, mapaCierre);
 
-  const filtrados = gastos.filter(g => esGastoVigente(g, inicio, fin));
+  const filtrados = gastosAjustados.filter(g => esGastoVigente(g, inicio, fin));
 
   const agrupado: Record<string, { total: number; categoria: { id: string | null; nombre: string; icon: string } }> = {};
 
@@ -379,26 +386,6 @@ router.post('/hogar/:hogarId/importar-csv', authMiddleware, upload.single('archi
   if (idxTipoMov === -1 || idxDesc === -1) {
     throw new AppError(400, 'El CSV debe tener las columnas: tipo_movimiento, descripcion');
   }
-
-  const csvParseLine = (line: string): string[] => {
-    const result: string[] = [];
-    let current = '';
-    let inQuotes = false;
-    for (let i = 0; i < line.length; i++) {
-      const ch = line[i];
-      if (inQuotes) {
-        if (ch === '"' && line[i + 1] === '"') { current += '"'; i++; }
-        else if (ch === '"') inQuotes = false;
-        else current += ch;
-      } else {
-        if (ch === '"') inQuotes = true;
-        else if (ch === ',') { result.push(current); current = ''; }
-        else current += ch;
-      }
-    }
-    result.push(current);
-    return result;
-  };
 
   let creados = 0;
   const errores: string[] = [];

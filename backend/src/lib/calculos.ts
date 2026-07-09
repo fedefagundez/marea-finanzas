@@ -1,4 +1,4 @@
-import { isWithinInterval, addMonths } from 'date-fns';
+import { isWithinInterval, addMonths, startOfMonth } from 'date-fns';
 
 export interface IngresoParaCalculo {
   tipo: string;
@@ -11,15 +11,24 @@ export interface GastoParaCalculo {
   fechaInicio: Date | null;
   cuotasTotales: number | null;
   cuotasPagadas: number;
+  _cierreAjustado?: boolean;
 }
 
-export const calcularFechaFinCuotas = (
-  fechaInicio: Date,
-  cuotasTotales: number,
-  cuotasPagadas: number
-): Date => {
-  const mesesRestantes = cuotasTotales - cuotasPagadas - 1;
-  return addMonths(fechaInicio, mesesRestantes);
+export const ajustarFechaPorCierre = <T extends { tarjetaId?: string | null; fechaInicio: Date | null }>(
+  gasto: T,
+  mapaCierre: Map<string, number>
+): T & { _cierreAjustado?: boolean } => {
+  const diaCierre = gasto.tarjetaId ? mapaCierre.get(gasto.tarjetaId) : undefined;
+  if (!diaCierre || !gasto.fechaInicio) return gasto;
+
+  const dia = gasto.fechaInicio.getDate();
+  if (dia <= diaCierre) return gasto;
+
+  return {
+    ...gasto,
+    fechaInicio: startOfMonth(addMonths(gasto.fechaInicio, 1)),
+    _cierreAjustado: true,
+  };
 };
 
 export const esIngresoVigente = (
@@ -51,20 +60,20 @@ export const esGastoVigente = (
   { incluirPuntuales = true }: { incluirPuntuales?: boolean } = {}
 ): boolean => {
   if (gasto.tipo === 'PUNTUAL') {
-    if (!incluirPuntuales) return false;
+    if (!incluirPuntuales && !gasto._cierreAjustado) return false;
     return !!gasto.fechaInicio && isWithinInterval(gasto.fechaInicio, { start: inicio, end: fin });
   }
 
   if (gasto.tipo === 'RECURRENTE') {
-    if (gasto.cuotasTotales && gasto.cuotasPagadas >= gasto.cuotasTotales) return false;
-
     if (!gasto.fechaInicio) return true;
+    if (gasto.fechaInicio > fin) return false;
 
-    const fechaFinEstimada = gasto.cuotasTotales
-      ? calcularFechaFinCuotas(gasto.fechaInicio, gasto.cuotasTotales, gasto.cuotasPagadas)
-      : null;
+    if (gasto.cuotasTotales) {
+      const fechaUltimaCuota = addMonths(gasto.fechaInicio, gasto.cuotasTotales - 1);
+      return fechaUltimaCuota >= inicio;
+    }
 
-    return gasto.fechaInicio <= fin && (!fechaFinEstimada || fechaFinEstimada >= inicio);
+    return gasto.fechaInicio <= fin;
   }
 
   // INDEFINIDO

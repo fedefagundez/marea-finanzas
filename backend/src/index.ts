@@ -24,6 +24,7 @@ async function seedGlobalCategories() {
     { nombre: 'Salud', icon: '🏥' },
     { nombre: 'Transporte', icon: '🚗' },
     { nombre: 'Ocio', icon: '🎬' },
+    { nombre: 'Metas', icon: '🎯' },
   ];
 
   for (const cat of defaultCategories) {

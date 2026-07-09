@@ -70,10 +70,11 @@ model MiembroHogar {
 }
 
 model TarjetaCredito {
-  id       String @id @default(uuid())
-  nombre   String
-  ultimo4  String @map("ultimo_4")
-  hogarId  String @map("hogar_id")
+  id        String  @id @default(uuid())
+  nombre    String
+  ultimo4   String  @map("ultimo_4")
+  diaCierre Int?    @map("dia_cierre")
+  hogarId   String  @map("hogar_id")
 
   hogar    Hogar    @relation(fields: [hogarId], references: [id], onDelete: Cascade)
   gastos   Gasto[]

@@ -51,6 +51,10 @@ export class GastoService {
     return this.http.put<Gasto>(`${this.apiUrl}/${id}/pagar-cuota`, {});
   }
 
+  deshacerCuota(id: string): Observable<Gasto> {
+    return this.http.put<Gasto>(`${this.apiUrl}/${id}/deshacer-cuota`, {});
+  }
+
   eliminar(id: string): Observable<{ mensaje: string }> {
     return this.http.delete<{ mensaje: string }>(`${this.apiUrl}/${id}`);
   }
