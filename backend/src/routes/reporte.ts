@@ -313,7 +313,7 @@ router.get('/hogar/:hogarId/exportar-csv', authMiddleware, asyncHandler(async (r
 
   const tarjetaMap = new Map(tarjetas.map(t => [t.id, `${t.nombre} (****${t.ultimo4})`]));
 
-  const header = 'tipo_movimiento,descripcion,monto,tipo,fecha_inicio,fecha_fin,categoria,usuario,tarjeta,cuotas_totales,cuotas_pagadas,monto_objetivo,monto_actual,fecha_limite,cuota_mensual,created_at';
+  const header = 'tipo_movimiento,descripcion,monto,tipo,fecha_inicio,fecha_fin,categoria,usuario,tarjeta,cuotas_totales,cuotas_pagadas,monto_objetivo,monto_actual,fecha_limite,cuota_mensual,ultimo4,dia_cierre,created_at';
   const rows: string[] = [header];
 
   for (const ing of ingresos) {
@@ -328,6 +328,7 @@ router.get('/hogar/:hogarId/exportar-csv', authMiddleware, asyncHandler(async (r
       csvEscape(ing.usuario?.username ?? ''),
       '', '', '',
       '', '', '', '',
+      '', '',
       csvEscape(ing.createdAt ? format(ing.createdAt, 'yyyy-MM-dd HH:mm:ss') : ''),
     ].join(','));
   }
@@ -346,6 +347,7 @@ router.get('/hogar/:hogarId/exportar-csv', authMiddleware, asyncHandler(async (r
       csvEscape(g.cuotasTotales ?? ''),
       csvEscape(g.cuotasPagadas),
       '', '', '', '',
+      '', '',
       csvEscape(g.createdAt ? format(g.createdAt, 'yyyy-MM-dd HH:mm:ss') : ''),
     ].join(','));
   }
@@ -364,7 +366,24 @@ router.get('/hogar/:hogarId/exportar-csv', authMiddleware, asyncHandler(async (r
       csvEscape(Number(m.montoActual)),
       csvEscape(format(m.fechaLimite, 'yyyy-MM-dd')),
       csvEscape(m.cuotaMensual ? Number(m.cuotaMensual) : ''),
+      '', '',
       csvEscape(m.createdAt ? format(m.createdAt, 'yyyy-MM-dd HH:mm:ss') : ''),
+    ].join(','));
+  }
+
+  for (const t of tarjetas) {
+    rows.push([
+      'TARJETA',
+      csvEscape(t.nombre),
+      '', '', '',
+      '',
+      '',
+      '',
+      '', '', '',
+      '', '', '', '',
+      csvEscape(t.ultimo4),
+      csvEscape(t.diaCierre ?? ''),
+      '',
     ].join(','));
   }
 
@@ -404,6 +423,8 @@ router.post('/hogar/:hogarId/importar-csv', authMiddleware, upload.single('archi
   const idxMontoAct = idx('monto_actual');
   const idxFechaLim = idx('fecha_limite');
   const idxCuotaMensual = idx('cuota_mensual');
+  const idxUltimo4 = idx('ultimo4');
+  const idxDiaCierre = idx('dia_cierre');
 
   if (idxTipoMov === -1 || idxDesc === -1) {
     throw new AppError(400, 'El CSV debe tener las columnas: tipo_movimiento, descripcion');
@@ -421,6 +442,36 @@ router.post('/hogar/:hogarId/importar-csv', authMiddleware, upload.single('archi
     const fecha = idxFecha !== -1 ? (cols[idxFecha] ?? '').trim() : '';
     const fechaFinRaw = idxFechaFin !== -1 ? (cols[idxFechaFin] ?? '').trim() : '';
     const tipo = idxTipo !== -1 ? (cols[idxTipo] ?? '').trim().toUpperCase() : 'PUNTUAL';
+
+    if (tipoMov === 'TARJETA') {
+      if (!descripcion) {
+        errores.push(`Línea ${i + 1}: tarjeta sin nombre`);
+        continue;
+      }
+      const ultimo4 = idxUltimo4 !== -1 ? (cols[idxUltimo4] ?? '').trim() : '';
+      const diaCierreRaw = idxDiaCierre !== -1 ? (cols[idxDiaCierre] ?? '').trim() : '';
+      const diaCierre = parseInt(diaCierreRaw, 10);
+
+      try {
+        const existente = await prisma.tarjetaCredito.findFirst({
+          where: { hogarId, nombre: descripcion },
+        });
+        if (!existente) {
+          await prisma.tarjetaCredito.create({
+            data: {
+              hogarId,
+              nombre: descripcion,
+              ultimo4: ultimo4 || '0000',
+              diaCierre: !isNaN(diaCierre) ? diaCierre : null,
+            },
+          });
+          creados++;
+        }
+      } catch (e) {
+        errores.push(`Línea ${i + 1}: error al crear tarjeta`);
+      }
+      continue;
+    }
 
     if (tipoMov === 'META') {
       const montoObjRaw = idxMontoObj !== -1 ? (cols[idxMontoObj] ?? '').trim().replace(/[$,]/g, '') : '';
@@ -461,7 +512,7 @@ router.post('/hogar/:hogarId/importar-csv', authMiddleware, upload.single('archi
     }
 
     if (tipoMov !== 'INGRESO' && tipoMov !== 'GASTO') {
-      errores.push(`Línea ${i + 1}: tipo_movimiento debe ser INGRESO, GASTO o META`);
+      errores.push(`Línea ${i + 1}: tipo_movimiento debe ser INGRESO, GASTO, META o TARJETA`);
       continue;
     }
 
