@@ -244,16 +244,19 @@ export class PerfilComponent implements OnInit {
   importarCsv() {
     if (!this.archivoImportar) return;
     const hogarId = localStorage.getItem('hogarId');
-    if (!hogarId) { this.toast.show('Seleccioná un hogar primero', 'error'); return; }
 
     this.importando = true;
-    this.reporteService.importarCsv(hogarId, this.archivoImportar).subscribe({
+    const request$ = hogarId
+      ? this.reporteService.importarCsv(hogarId, this.archivoImportar)
+      : this.reporteService.restaurarCsv(this.archivoImportar);
+
+    request$.subscribe({
       next: (res) => {
         this.importando = false;
         this.archivoImportar = null;
         this.toast.show(res.mensaje, 'success');
         if (res.errores?.length) {
-          console.warn('Errores de importación:', res.errores);
+          console.warn('Errores:', res.errores);
         }
       },
       error: (err) => {
