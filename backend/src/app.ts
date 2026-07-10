@@ -13,6 +13,7 @@ import reporteRoutes from './routes/reporte.js';
 import categoriaRoutes from './routes/categoria.js';
 import metaRoutes from './routes/meta.js';
 import adminRoutes from './routes/admin.js';
+import simulacionRoutes from './routes/simulacion.js';
 
 const app = express();
 
@@ -28,6 +29,7 @@ app.use('/api/reportes', reporteRoutes);
 app.use('/api/categorias', categoriaRoutes);
 app.use('/api/metas', metaRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/simulaciones', simulacionRoutes);
 
 const publicPath = path.resolve('public');
 app.use(express.static(publicPath));

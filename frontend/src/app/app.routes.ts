@@ -32,6 +32,8 @@ export const routes: Routes = [
       { path: 'perfil', loadComponent: () => import('./pages/perfil/perfil.component').then(m => m.PerfilComponent) },
       { path: 'metas', loadComponent: () => import('./pages/metas/metas.component').then(m => m.MetasComponent) },
       { path: 'categorias', loadComponent: () => import('./pages/categorias/categorias.component').then(m => m.CategoriasComponent) },
+      { path: 'simulaciones', loadComponent: () => import('./pages/simulaciones/simulaciones.component').then(m => m.SimulacionesComponent) },
+      { path: 'simulaciones/:id', loadComponent: () => import('./pages/simulacion/simulacion.component').then(m => m.SimulacionComponent) },
       { path: 'admin', loadComponent: () => import('./pages/admin/admin.component').then(m => m.AdminComponent), canActivate: [adminGuard] },
     ]
   },

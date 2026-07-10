@@ -79,6 +79,12 @@ import { AuthService } from '../../services/auth.service';
             </svg>
             Categorías
           </a>
+          <a class="rail-link" routerLink="/simulaciones" routerLinkActive="active" (click)="cerrarMenu()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 3v18h18"/><path d="M7 16l4-5 4 3 5-7"/>
+            </svg>
+            Simulaciones
+          </a>
           <a class="rail-link" routerLink="/perfil" routerLinkActive="active" (click)="cerrarMenu()">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <circle cx="12" cy="8.5" r="3.5"/><path d="M5 20c1.2-3.8 4-5.5 7-5.5s5.8 1.7 7 5.5"/>

@@ -21,6 +21,7 @@ model Usuario {
   miembros            MiembroHogar[]
   categorias          Categoria[]
   passwordResetTokens PasswordResetToken[]
+  simulaciones        Simulacion[]
 
   @@map("usuarios")
 }
@@ -50,6 +51,7 @@ model Hogar {
   metas      Meta[]
   tarjetas   TarjetaCredito[]
   categorias Categoria[]
+  simulaciones Simulacion[]
 
   @@map("hogares")
 }
@@ -156,4 +158,34 @@ model Meta {
   usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
 
   @@map("metas")
+}
+
+model Simulacion {
+  id        String   @id @default(uuid())
+  nombre    String
+  createdAt DateTime @default(now()) @map("created_at")
+  hogarId   String   @map("hogar_id")
+  usuarioId String   @map("usuario_id")
+
+  hogar   Hogar   @relation(fields: [hogarId], references: [id], onDelete: Cascade)
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  items   ItemSimulacion[]
+
+  @@map("simulaciones")
+}
+
+model ItemSimulacion {
+  id             String    @id @default(uuid())
+  descripcion    String
+  monto          Decimal
+  tipo           String
+  subtipo        String
+  fechaInicio    DateTime? @map("fecha_inicio")
+  cuotasTotales  Int?      @map("cuotas_totales")
+  createdAt      DateTime  @default(now()) @map("created_at")
+
+  simulacionId String     @map("simulacion_id")
+  simulacion   Simulacion @relation(fields: [simulacionId], references: [id], onDelete: Cascade)
+
+  @@map("items_simulacion")
 }

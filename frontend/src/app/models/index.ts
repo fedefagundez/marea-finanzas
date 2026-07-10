@@ -143,3 +143,36 @@ export interface Meta {
   gastoId: string | null;
   createdAt: string;
 }
+
+export interface Simulacion {
+  id: string;
+  nombre: string;
+  createdAt: string;
+  cantidadItems: number;
+}
+
+export interface ItemSimulacion {
+  id: string;
+  descripcion: string;
+  monto: number;
+  tipo: 'PUNTUAL' | 'RECURRENTE' | 'INDEFINIDO';
+  subtipo: 'INGRESO' | 'GASTO';
+  fechaInicio?: string;
+  cuotasTotales?: number;
+  simulacionId: string;
+  createdAt: string;
+}
+
+export interface ProyeccionSimulacionItem {
+  mes: string;
+  label: string;
+  ingresos: number;
+  gastos: number;
+  balance: number;
+  tipo: 'REAL' | 'SIMULADO';
+}
+
+export interface ProyeccionSimulacionResponse {
+  data: ProyeccionSimulacionItem[];
+  simulacion: { id: string; nombre: string };
+}
