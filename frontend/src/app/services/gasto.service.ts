@@ -3,14 +3,15 @@ import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
 import { Gasto } from '../models';
+import { CrudService } from './crud.service';
 
 @Injectable({ providedIn: 'root' })
-export class GastoService {
-  private apiUrl = `${environment.apiUrl}/gastos`;
+export class GastoService extends CrudService<Gasto> {
+  constructor(http: HttpClient) {
+    super(http, `${environment.apiUrl}/gastos`);
+  }
 
-  constructor(private http: HttpClient) {}
-
-  crear(data: {
+  override crear(data: {
     hogarId: string;
     descripcion: string;
     monto: number;
@@ -20,11 +21,7 @@ export class GastoService {
     tarjetaId?: string;
     categoriaId?: string;
   }): Observable<Gasto> {
-    return this.http.post<Gasto>(this.apiUrl, data);
-  }
-
-  listarPorHogar(hogarId: string): Observable<Gasto[]> {
-    return this.http.get<Gasto[]>(`${this.apiUrl}/hogar/${hogarId}`);
+    return super.crear(data as Record<string, unknown>);
   }
 
   listarPorFiltros(hogarId: string, filtros: {
@@ -43,19 +40,11 @@ export class GastoService {
     return this.http.get<Gasto[]>(`${this.apiUrl}/hogar/${hogarId}`, { params });
   }
 
-  actualizar(id: string, data: Partial<Gasto>): Observable<Gasto> {
-    return this.http.put<Gasto>(`${this.apiUrl}/${id}`, data);
-  }
-
   pagarCuota(id: string): Observable<Gasto> {
     return this.http.put<Gasto>(`${this.apiUrl}/${id}/pagar-cuota`, {});
   }
 
   deshacerCuota(id: string): Observable<Gasto> {
     return this.http.put<Gasto>(`${this.apiUrl}/${id}/deshacer-cuota`, {});
-  }
-
-  eliminar(id: string): Observable<{ mensaje: string }> {
-    return this.http.delete<{ mensaje: string }>(`${this.apiUrl}/${id}`);
   }
 }

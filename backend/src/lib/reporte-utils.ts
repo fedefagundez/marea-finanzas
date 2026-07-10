@@ -1,4 +1,20 @@
-import { esIngresoVigente, esGastoVigente } from './calculos.js';
+import { esIngresoVigente, esGastoVigente, ajustarFechaPorCierre } from './calculos.js';
+import { prisma } from './prisma.js';
+
+export async function obtenerMapaCierre(hogarId: string): Promise<Map<string, number>> {
+  const tarjetas = await prisma.tarjetaCredito.findMany({
+    where: { hogarId },
+    select: { id: true, diaCierre: true },
+  });
+  return new Map(tarjetas.filter(t => t.diaCierre != null).map(t => [t.id, t.diaCierre!]));
+}
+
+export function ajustarGastos<T extends { tarjetaId?: string | null; fechaInicio: Date | null }>(
+  gastos: T[],
+  mapaCierre: Map<string, number>,
+) {
+  return gastos.map(g => ajustarFechaPorCierre(g, mapaCierre));
+}
 
 export const calcularTotales = (
   ingresos: { tipo: string; fechaInicio: Date | null; fechaFin: Date | null; monto: unknown }[],

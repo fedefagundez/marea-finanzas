@@ -291,7 +291,7 @@ export class HogaresComponent implements OnInit {
 
     const diaCierre = this.tarjetaDiaCierre ? parseInt(this.tarjetaDiaCierre) : undefined;
 
-    this.tarjetaService.crear(hogarId, nombre, ultimo4, diaCierre).subscribe({
+    this.tarjetaService.crearTarjeta(hogarId, nombre, ultimo4, diaCierre).subscribe({
       next: () => {
         this.tarjetaNombre = '';
         this.tarjetaUltimo4 = '';

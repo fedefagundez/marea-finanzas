@@ -3,26 +3,23 @@ import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
 import { Categoria } from '../models';
+import { CrudService } from './crud.service';
 
 @Injectable({ providedIn: 'root' })
-export class CategoriaService {
-  private apiUrl = `${environment.apiUrl}/categorias`;
-
-  constructor(private http: HttpClient) {}
+export class CategoriaService extends CrudService<Categoria> {
+  constructor(http: HttpClient) {
+    super(http, `${environment.apiUrl}/categorias`);
+  }
 
   listar(hogarId: string): Observable<Categoria[]> {
     return this.http.get<Categoria[]>(`${this.apiUrl}?hogarId=${hogarId}`);
   }
 
-  crear(data: { nombre: string; icon: string; hogarId: string }): Observable<Categoria> {
-    return this.http.post<Categoria>(this.apiUrl, data);
+  override crear(data: { nombre: string; icon: string; hogarId: string }): Observable<Categoria> {
+    return super.crear(data as Record<string, unknown>);
   }
 
-  actualizar(id: string, data: Partial<Pick<Categoria, 'nombre' | 'icon'>>): Observable<Categoria> {
-    return this.http.put<Categoria>(`${this.apiUrl}/${id}`, data);
-  }
-
-  eliminar(id: string): Observable<{ mensaje: string }> {
-    return this.http.delete<{ mensaje: string }>(`${this.apiUrl}/${id}`);
+  override actualizar(id: string, data: Partial<Pick<Categoria, 'nombre' | 'icon'>>): Observable<Categoria> {
+    return super.actualizar(id, data as Partial<Categoria>);
   }
 }

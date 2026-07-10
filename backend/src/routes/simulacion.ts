@@ -3,8 +3,8 @@ import { startOfMonth, endOfMonth, addMonths, format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { prisma } from '../lib/prisma.js';
 import { verificarMiembro } from '../lib/auth.js';
-import { calcularTotales } from '../lib/reporte-utils.js';
-import { esGastoVigente, ajustarFechaPorCierre } from '../lib/calculos.js';
+import { calcularTotales, obtenerMapaCierre, ajustarGastos } from '../lib/reporte-utils.js';
+import { esGastoVigente } from '../lib/calculos.js';
 import { AppError } from '../middlewares/error.js';
 import { asyncHandler } from '../lib/asyncHandler.js';
 import { authMiddleware, AuthRequest } from '../middlewares/auth.js';
@@ -56,14 +56,11 @@ router.get('/hogar/:hogarId', authMiddleware, asyncHandler(async (req: AuthReque
 router.post('/hogar/:hogarId', authMiddleware, asyncHandler(async (req: AuthRequest, res) => {
   await verificarMiembro(req.usuarioId!, req.params.hogarId);
 
-  const parsed = crearSimulacionSchema.safeParse(req.body);
-  if (!parsed.success) {
-    throw new AppError(400, parsed.error.errors[0].message);
-  }
+  const parsed = crearSimulacionSchema.parse(req.body);
 
   const simulacion = await prisma.simulacion.create({
     data: {
-      nombre: parsed.data.nombre,
+      nombre: parsed.nombre,
       hogarId: req.params.hogarId,
       usuarioId: req.usuarioId!,
     },
@@ -73,24 +70,23 @@ router.post('/hogar/:hogarId', authMiddleware, asyncHandler(async (req: AuthRequ
 }));
 
 router.put('/:id', authMiddleware, asyncHandler(async (req: AuthRequest, res) => {
-  const simulacion = await prisma.simulacion.findUniqueOrThrow({ where: { id: req.params.id } });
+  const simulacion = await prisma.simulacion.findUnique({ where: { id: req.params.id } });
+  if (!simulacion) throw new AppError(404, 'Simulación no encontrada');
   await verificarMiembro(req.usuarioId!, simulacion.hogarId);
 
-  const parsed = crearSimulacionSchema.safeParse(req.body);
-  if (!parsed.success) {
-    throw new AppError(400, parsed.error.errors[0].message);
-  }
+  const parsed = crearSimulacionSchema.parse(req.body);
 
   const actualizada = await prisma.simulacion.update({
     where: { id: req.params.id },
-    data: { nombre: parsed.data.nombre },
+    data: { nombre: parsed.nombre },
   });
 
   res.json(actualizada);
 }));
 
 router.delete('/:id', authMiddleware, asyncHandler(async (req: AuthRequest, res) => {
-  const simulacion = await prisma.simulacion.findUniqueOrThrow({ where: { id: req.params.id } });
+  const simulacion = await prisma.simulacion.findUnique({ where: { id: req.params.id } });
+  if (!simulacion) throw new AppError(404, 'Simulación no encontrada');
   await verificarMiembro(req.usuarioId!, simulacion.hogarId);
 
   await prisma.simulacion.delete({ where: { id: req.params.id } });
@@ -101,7 +97,8 @@ router.delete('/:id', authMiddleware, asyncHandler(async (req: AuthRequest, res)
 // ─── CRUD Items de Simulación ─────────────────────────────────
 
 router.get('/:id/items', authMiddleware, asyncHandler(async (req: AuthRequest, res) => {
-  const simulacion = await prisma.simulacion.findUniqueOrThrow({ where: { id: req.params.id } });
+  const simulacion = await prisma.simulacion.findUnique({ where: { id: req.params.id } });
+  if (!simulacion) throw new AppError(404, 'Simulación no encontrada');
   await verificarMiembro(req.usuarioId!, simulacion.hogarId);
 
   const items = await prisma.itemSimulacion.findMany({
@@ -113,23 +110,21 @@ router.get('/:id/items', authMiddleware, asyncHandler(async (req: AuthRequest, r
 }));
 
 router.post('/:id/items', authMiddleware, asyncHandler(async (req: AuthRequest, res) => {
-  const simulacion = await prisma.simulacion.findUniqueOrThrow({ where: { id: req.params.id } });
+  const simulacion = await prisma.simulacion.findUnique({ where: { id: req.params.id } });
+  if (!simulacion) throw new AppError(404, 'Simulación no encontrada');
   await verificarMiembro(req.usuarioId!, simulacion.hogarId);
 
-  const parsed = crearItemSchema.safeParse(req.body);
-  if (!parsed.success) {
-    throw new AppError(400, parsed.error.errors[0].message);
-  }
+  const parsed = crearItemSchema.parse(req.body);
 
   const item = await prisma.itemSimulacion.create({
     data: {
       simulacionId: req.params.id,
-      descripcion: parsed.data.descripcion,
-      monto: parsed.data.monto,
-      tipo: parsed.data.tipo,
-      subtipo: parsed.data.subtipo,
-      fechaInicio: parsed.data.fechaInicio ? new Date(parsed.data.fechaInicio) : null,
-      cuotasTotales: parsed.data.cuotasTotales ?? null,
+      descripcion: parsed.descripcion,
+      monto: parsed.monto,
+      tipo: parsed.tipo,
+      subtipo: parsed.subtipo,
+      fechaInicio: parsed.fechaInicio ? new Date(parsed.fechaInicio) : null,
+      cuotasTotales: parsed.cuotasTotales ?? null,
     },
   });
 
@@ -137,27 +132,25 @@ router.post('/:id/items', authMiddleware, asyncHandler(async (req: AuthRequest, 
 }));
 
 router.put('/items/:itemId', authMiddleware, asyncHandler(async (req: AuthRequest, res) => {
-  const item = await prisma.itemSimulacion.findUniqueOrThrow({
+  const item = await prisma.itemSimulacion.findUnique({
     where: { id: req.params.itemId },
     include: { simulacion: true },
   });
+  if (!item) throw new AppError(404, 'Item no encontrado');
   await verificarMiembro(req.usuarioId!, item.simulacion.hogarId);
 
-  const parsed = actualizarItemSchema.safeParse(req.body);
-  if (!parsed.success) {
-    throw new AppError(400, parsed.error.errors[0].message);
-  }
+  const parsed = actualizarItemSchema.parse(req.body);
 
   const data: Record<string, unknown> = {};
-  if (parsed.data.descripcion !== undefined) data.descripcion = parsed.data.descripcion;
-  if (parsed.data.monto !== undefined) data.monto = parsed.data.monto;
-  if (parsed.data.tipo !== undefined) data.tipo = parsed.data.tipo;
-  if (parsed.data.subtipo !== undefined) data.subtipo = parsed.data.subtipo;
-  if (parsed.data.fechaInicio !== undefined) {
-    data.fechaInicio = parsed.data.fechaInicio ? new Date(parsed.data.fechaInicio) : null;
+  if (parsed.descripcion !== undefined) data.descripcion = parsed.descripcion;
+  if (parsed.monto !== undefined) data.monto = parsed.monto;
+  if (parsed.tipo !== undefined) data.tipo = parsed.tipo;
+  if (parsed.subtipo !== undefined) data.subtipo = parsed.subtipo;
+  if (parsed.fechaInicio !== undefined) {
+    data.fechaInicio = parsed.fechaInicio ? new Date(parsed.fechaInicio) : null;
   }
-  if (parsed.data.cuotasTotales !== undefined) {
-    data.cuotasTotales = parsed.data.cuotasTotales ?? null;
+  if (parsed.cuotasTotales !== undefined) {
+    data.cuotasTotales = parsed.cuotasTotales ?? null;
   }
 
   const actualizado = await prisma.itemSimulacion.update({
@@ -169,10 +162,11 @@ router.put('/items/:itemId', authMiddleware, asyncHandler(async (req: AuthReques
 }));
 
 router.delete('/items/:itemId', authMiddleware, asyncHandler(async (req: AuthRequest, res) => {
-  const item = await prisma.itemSimulacion.findUniqueOrThrow({
+  const item = await prisma.itemSimulacion.findUnique({
     where: { id: req.params.itemId },
     include: { simulacion: true },
   });
+  if (!item) throw new AppError(404, 'Item no encontrado');
   await verificarMiembro(req.usuarioId!, item.simulacion.hogarId);
 
   await prisma.itemSimulacion.delete({ where: { id: req.params.itemId } });
@@ -182,26 +176,12 @@ router.delete('/items/:itemId', authMiddleware, asyncHandler(async (req: AuthReq
 
 // ─── Proyección Combinada ─────────────────────────────────────
 
-async function obtenerMapaCierre(hogarId: string): Promise<Map<string, number>> {
-  const tarjetas = await prisma.tarjetaCredito.findMany({
-    where: { hogarId },
-    select: { id: true, diaCierre: true },
-  });
-  return new Map(tarjetas.filter(t => t.diaCierre != null).map(t => [t.id, t.diaCierre!]));
-}
-
-function ajustarGastos<T extends { tarjetaId?: string | null; fechaInicio: Date | null }>(
-  gastos: T[],
-  mapaCierre: Map<string, number>,
-) {
-  return gastos.map(g => ajustarFechaPorCierre(g, mapaCierre));
-}
-
 router.get('/:id/proyeccion', authMiddleware, asyncHandler(async (req: AuthRequest, res) => {
-  const simulacion = await prisma.simulacion.findUniqueOrThrow({
+  const simulacion = await prisma.simulacion.findUnique({
     where: { id: req.params.id },
     include: { items: true },
   });
+  if (!simulacion) throw new AppError(404, 'Simulación no encontrada');
   await verificarMiembro(req.usuarioId!, simulacion.hogarId);
 
   const meses = parseInt(req.query.meses as string) || 12;
