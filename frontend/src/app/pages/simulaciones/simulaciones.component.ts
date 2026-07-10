@@ -45,7 +45,11 @@ import { Simulacion } from '../../models';
       </div>
 
       <div *ngIf="!cargando && simulaciones.length === 0" class="card" style="text-align:center; padding:40px 20px;">
-        <div style="font-size:40px; margin-bottom:8px;">📊</div>
+        <div style="margin-bottom:8px;">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--primary-500)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 3v18h18"/><path d="M7 16l4-5 4 3 5-7"/>
+          </svg>
+        </div>
         <div style="font-weight:600; margin-bottom:4px;">Sin simulaciones</div>
         <div style="font-size:13px; color:var(--text-3);">Creá tu primera simulación para ver proyecciones a futuro.</div>
       </div>
@@ -56,8 +60,10 @@ import { Simulacion } from '../../models';
              [style.box-shadow]="s._hover ? '0 4px 20px rgba(6,182,212,0.15)' : ''">
           <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
             <div style="display:flex; align-items:center; gap:12px;">
-              <div style="width:40px; height:40px; border-radius:var(--radius-md); background:var(--primary-50); display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0;">
-                📈
+              <div style="width:40px; height:40px; border-radius:var(--radius-md); background:var(--primary-50); display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary-700)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M3 3v18h18"/><path d="M7 16l4-5 4 3 5-7"/>
+                </svg>
               </div>
               <div>
                 <div style="font-weight:600;">{{ s.nombre }}</div>
@@ -65,8 +71,12 @@ import { Simulacion } from '../../models';
               </div>
             </div>
             <div style="display:flex; gap:6px;">
-              <button type="button" class="btn btn-ghost btn-sm" (click)="editarNombre($event, s)" title="Renombrar">✏️</button>
-              <button type="button" class="btn btn-ghost btn-sm" (click)="eliminar($event, s)" title="Eliminar" style="color:var(--danger-500);">🗑️</button>
+              <button type="button" class="btn btn-ghost btn-sm" (click)="editarNombre($event, s)" title="Renombrar">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+              </button>
+              <button type="button" class="btn btn-ghost btn-sm" (click)="eliminar($event, s)" title="Eliminar" style="color:var(--danger-500);">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"/><path d="M9 7V4.8a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1V7"/><path d="M6 7l1 12.2a2 2 0 0 0 2 1.8h6a2 2 0 0 0 2-1.8L18 7"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+              </button>
             </div>
           </div>
         </div>

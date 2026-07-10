@@ -18,7 +18,9 @@ import { toInputDate } from '../../core/utils/form-utils';
   template: `
     <div class="demo-topbar">
       <div style="display:flex; align-items:center; gap:10px;">
-        <a routerLink="/simulaciones" style="color:var(--text-3); text-decoration:none; font-size:18px;">←</a>
+        <a routerLink="/simulaciones" style="color:var(--text-3); text-decoration:none; display:flex;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
+        </a>
         <div>
           <div class="eyebrow">Simulación</div>
           <div class="sec-title">{{ simulacion?.nombre || 'Cargando...' }}</div>
@@ -104,7 +106,18 @@ import { toInputDate } from '../../core/utils/form-utils';
               <tr *ngFor="let item of items">
                 <td>
                   <div class="tx-name">
-                    <span class="tx-icon" [style.background]="item.subtipo === 'INGRESO' ? 'var(--success-100)' : 'var(--primary-50)'" [style.color]="item.subtipo === 'INGRESO' ? 'var(--success-700)' : 'var(--primary-700)'">{{ item.subtipo === 'INGRESO' ? '+' : '-' }}</span>
+                    <span class="tx-icon" [style.background]="item.subtipo === 'INGRESO' ? 'var(--success-100)' : 'var(--primary-50)'" [style.color]="item.subtipo === 'INGRESO' ? 'var(--success-700)' : 'var(--primary-700)'">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <ng-container [ngSwitch]="item.subtipo">
+                          <ng-container *ngSwitchCase="'INGRESO'">
+                            <path d="M7 15l5-5 5 5"/><path d="M12 10v10"/><path d="M5 4h14"/>
+                          </ng-container>
+                          <ng-container *ngSwitchDefault>
+                            <path d="M7 9l5 5 5-5"/><path d="M12 14V4"/><path d="M5 20h14"/>
+                          </ng-container>
+                        </ng-container>
+                      </svg>
+                    </span>
                     {{ item.descripcion }}
                   </div>
                 </td>
@@ -123,8 +136,12 @@ import { toInputDate } from '../../core/utils/form-utils';
                   {{ item.monto | arsCurrency }}
                 </td>
                 <td style="white-space:nowrap;">
-                  <button type="button" class="btn btn-ghost btn-sm" (click)="editarItem(item)" title="Editar">✏️</button>
-                  <button type="button" class="btn btn-ghost btn-sm" (click)="eliminarItem(item)" title="Eliminar" style="color:var(--danger-500);">🗑️</button>
+                  <button type="button" class="btn btn-ghost btn-sm" (click)="editarItem(item)" title="Editar">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+                  </button>
+                  <button type="button" class="btn btn-ghost btn-sm" (click)="eliminarItem(item)" title="Eliminar" style="color:var(--danger-500);">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"/><path d="M9 7V4.8a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1V7"/><path d="M6 7l1 12.2a2 2 0 0 0 2 1.8h6a2 2 0 0 0 2-1.8L18 7"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+                  </button>
                 </td>
               </tr>
             </tbody>
