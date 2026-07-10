@@ -343,6 +343,22 @@ router.get('/hogar/:hogarId/exportar-csv', authMiddleware, asyncHandler(async (r
     ].join(','));
   }
 
+  for (const t of tarjetas) {
+    rows.push([
+      'TARJETA',
+      csvEscape(t.nombre),
+      '', '', '',
+      '',
+      '',
+      '',
+      '', '', '',
+      '', '', '', '',
+      csvEscape(t.ultimo4),
+      csvEscape(t.diaCierre ?? ''),
+      '', '',
+    ].join(','));
+  }
+
   for (const g of gastos) {
     rows.push([
       'GASTO',
@@ -378,22 +394,6 @@ router.get('/hogar/:hogarId/exportar-csv', authMiddleware, asyncHandler(async (r
       csvEscape(m.cuotaMensual ? Number(m.cuotaMensual) : ''),
       '', '', '',
       csvEscape(m.createdAt ? format(m.createdAt, 'yyyy-MM-dd HH:mm:ss') : ''),
-    ].join(','));
-  }
-
-  for (const t of tarjetas) {
-    rows.push([
-      'TARJETA',
-      csvEscape(t.nombre),
-      '', '', '',
-      '',
-      '',
-      '',
-      '', '', '',
-      '', '', '', '',
-      csvEscape(t.ultimo4),
-      csvEscape(t.diaCierre ?? ''),
-      '', '',
     ].join(','));
   }
 
@@ -547,6 +547,27 @@ router.post('/hogar/:hogarId/importar-csv', authMiddleware, upload.single('archi
       }
     }
 
+    let categoriaId: string | undefined;
+
+    if (idxCategoria !== -1 && tipoMov === 'GASTO') {
+      const catStr = (cols[idxCategoria] ?? '').trim();
+      if (catStr) {
+        const spaceIdx = catStr.indexOf(' ');
+        const icon = spaceIdx > 0 ? catStr.substring(0, spaceIdx).trim() : '📂';
+        const nombre = spaceIdx > 0 ? catStr.substring(spaceIdx + 1).trim() : catStr;
+
+        let cat = await prisma.categoria.findFirst({
+          where: { hogarId, nombre },
+        });
+        if (!cat) {
+          cat = await prisma.categoria.create({
+            data: { hogarId, nombre, icon },
+          });
+        }
+        categoriaId = cat.id;
+      }
+    }
+
     try {
       if (tipoMov === 'INGRESO') {
         await prisma.ingreso.create({
@@ -572,6 +593,7 @@ router.post('/hogar/:hogarId/importar-csv', authMiddleware, upload.single('archi
             cuotasTotales: !isNaN(cuotasTotales) && cuotasTotales > 0 ? cuotasTotales : null,
             cuotasPagadas: !isNaN(cuotasPagadas) && cuotasPagadas >= 0 ? cuotasPagadas : 0,
             tarjetaId,
+            categoriaId,
           },
         });
       }
@@ -745,6 +767,21 @@ router.post('/restaurar-csv', authMiddleware, upload.single('archivo'), asyncHan
       }
     }
 
+    let categoriaId: string | undefined;
+    if (idxCategoria !== -1 && tipoMov === 'GASTO') {
+      const catStr = (cols[idxCategoria] ?? '').trim();
+      if (catStr) {
+        const spaceIdx = catStr.indexOf(' ');
+        const icon = spaceIdx > 0 ? catStr.substring(0, spaceIdx).trim() : '📂';
+        const nombre = spaceIdx > 0 ? catStr.substring(spaceIdx + 1).trim() : catStr;
+        let cat = await prisma.categoria.findFirst({ where: { hogarId, nombre } });
+        if (!cat) {
+          cat = await prisma.categoria.create({ data: { hogarId, nombre, icon } });
+        }
+        categoriaId = cat.id;
+      }
+    }
+
     try {
       if (tipoMov === 'INGRESO') {
         await prisma.ingreso.create({
@@ -752,7 +789,7 @@ router.post('/restaurar-csv', authMiddleware, upload.single('archivo'), asyncHan
         });
       } else {
         await prisma.gasto.create({
-          data: { hogarId, usuarioId: req.usuarioId!, descripcion, monto, tipo: tipoValido as 'PUNTUAL' | 'RECURRENTE' | 'INDEFINIDO', fechaInicio, cuotasTotales: !isNaN(cuotasTotales) && cuotasTotales > 0 ? cuotasTotales : null, cuotasPagadas: !isNaN(cuotasPagadas) && cuotasPagadas >= 0 ? cuotasPagadas : 0, tarjetaId },
+          data: { hogarId, usuarioId: req.usuarioId!, descripcion, monto, tipo: tipoValido as 'PUNTUAL' | 'RECURRENTE' | 'INDEFINIDO', fechaInicio, cuotasTotales: !isNaN(cuotasTotales) && cuotasTotales > 0 ? cuotasTotales : null, cuotasPagadas: !isNaN(cuotasPagadas) && cuotasPagadas >= 0 ? cuotasPagadas : 0, tarjetaId, categoriaId },
         });
       }
       creados++;
