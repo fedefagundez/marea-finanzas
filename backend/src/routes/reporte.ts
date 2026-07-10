@@ -505,7 +505,7 @@ router.post('/hogar/:hogarId/importar-csv', authMiddleware, upload.single('archi
             nombre: descripcion,
             montoObjetivo: montoObj,
             montoActual: isNaN(montoAct) || montoAct < 0 ? 0 : montoAct,
-            fechaLimite: fechaLim ? new Date(fechaLim) : new Date(),
+            fechaLimite: fechaLim ? new Date(fechaLim + 'T12:00:00') : new Date(),
             cuotaMensual: isNaN(cuotaMensual) ? null : cuotaMensual,
           },
         });
@@ -527,8 +527,8 @@ router.post('/hogar/:hogarId/importar-csv', authMiddleware, upload.single('archi
     }
 
     const tipoValido = ['PUNTUAL', 'RECURRENTE', 'INDEFINIDO'].includes(tipo) ? tipo : 'PUNTUAL';
-    const fechaInicio = fecha ? new Date(fecha) : undefined;
-    const fechaFin = fechaFinRaw ? new Date(fechaFinRaw) : undefined;
+    const fechaInicio = fecha ? new Date(fecha + 'T12:00:00') : undefined;
+    const fechaFin = fechaFinRaw ? new Date(fechaFinRaw + 'T12:00:00') : undefined;
 
     const cuotasTotalesRaw = idxCuotasTotales !== -1 ? (cols[idxCuotasTotales] ?? '').trim() : '';
     const cuotasTotales = parseInt(cuotasTotalesRaw, 10);
@@ -735,7 +735,7 @@ router.post('/restaurar-csv', authMiddleware, upload.single('archivo'), asyncHan
       if (!descripcion || isNaN(montoObj) || montoObj <= 0) { errores.push(`Línea ${i + 1}: meta sin nombre o monto_objetivo inválido`); continue; }
       try {
         await prisma.meta.create({
-          data: { hogarId, usuarioId: req.usuarioId!, nombre: descripcion, montoObjetivo: montoObj, montoActual: isNaN(montoAct) || montoAct < 0 ? 0 : montoAct, fechaLimite: fechaLim ? new Date(fechaLim) : new Date(), cuotaMensual: isNaN(cuotaMensual) ? null : cuotaMensual },
+          data: { hogarId, usuarioId: req.usuarioId!, nombre: descripcion, montoObjetivo: montoObj, montoActual: isNaN(montoAct) || montoAct < 0 ? 0 : montoAct, fechaLimite: fechaLim ? new Date(fechaLim + 'T12:00:00') : new Date(), cuotaMensual: isNaN(cuotaMensual) ? null : cuotaMensual },
         });
         creados++;
       } catch { errores.push(`Línea ${i + 1}: error al crear meta`); }
@@ -751,8 +751,8 @@ router.post('/restaurar-csv', authMiddleware, upload.single('archivo'), asyncHan
     const tipoValido = ['PUNTUAL', 'RECURRENTE', 'INDEFINIDO'].includes(tipo) ? tipo : 'PUNTUAL';
     const fecha = idxFecha !== -1 ? (cols[idxFecha] ?? '').trim() : '';
     const fechaFinRaw = idxFechaFin !== -1 ? (cols[idxFechaFin] ?? '').trim() : '';
-    const fechaInicio = fecha ? new Date(fecha) : undefined;
-    const fechaFin = fechaFinRaw ? new Date(fechaFinRaw) : undefined;
+    const fechaInicio = fecha ? new Date(fecha + 'T12:00:00') : undefined;
+    const fechaFin = fechaFinRaw ? new Date(fechaFinRaw + 'T12:00:00') : undefined;
     const cuotasTotalesRaw = idxCuotasTotales !== -1 ? (cols[idxCuotasTotales] ?? '').trim() : '';
     const cuotasTotales = parseInt(cuotasTotalesRaw, 10);
     const cuotasPagadasRaw = idxCuotasPagadas !== -1 ? (cols[idxCuotasPagadas] ?? '').trim() : '';
