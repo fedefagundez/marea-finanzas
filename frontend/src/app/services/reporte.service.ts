@@ -64,4 +64,10 @@ export class ReporteService {
     formData.append('archivo', archivo);
     return this.http.post<ImportarCsvResult>(`${this.apiUrl}/hogar/${hogarId}/importar-csv`, formData);
   }
+
+  restaurarCsv(archivo: File): Observable<ImportarCsvResult> {
+    const formData = new FormData();
+    formData.append('archivo', archivo);
+    return this.http.post<ImportarCsvResult>(`${this.apiUrl}/restaurar-csv`, formData);
+  }
 }

@@ -295,22 +295,36 @@ router.get('/hogar/:hogarId/exportar-csv', authMiddleware, asyncHandler(async (r
 
   const hogarId = req.params.hogarId;
 
-  const [ingresos, gastos, metas] = await Promise.all([
+  const [hogar, ingresos, gastos, metas, tarjetas] = await Promise.all([
+    prisma.hogar.findUniqueOrThrow({ where: { id: hogarId } }),
     prisma.ingreso.findMany({
       where: { hogarId },
       include: { usuario: { select: { username: true } } },
     }),
     prisma.gasto.findMany({
       where: { hogarId },
-      include: { categoria: { select: { nombre: true, icon: true } }, usuario: { select: { username: true } } },
+      include: { categoria: { select: { nombre: true, icon: true } }, usuario: { select: { username: true } }, tarjeta: { select: { nombre: true, ultimo4: true } } },
     }),
     prisma.meta.findMany({
       where: { hogarId },
       include: { usuario: { select: { username: true } } },
     }),
+    prisma.tarjetaCredito.findMany({ where: { hogarId } }),
   ]);
 
-  const rows: string[] = ['tipo_movimiento,descripcion,monto,tipo,fecha,categoria,usuario,monto_objetivo,monto_actual,fecha_limite'];
+  const tarjetaMap = new Map(tarjetas.map(t => [t.id, `${t.nombre} (****${t.ultimo4})`]));
+
+  const header = 'tipo_movimiento,descripcion,monto,tipo,fecha_inicio,fecha_fin,categoria,usuario,tarjeta,cuotas_totales,cuotas_pagadas,monto_objetivo,monto_actual,fecha_limite,cuota_mensual,ultimo4,dia_cierre,token_invitacion,created_at';
+  const rows: string[] = [header];
+
+  rows.push([
+    'HOGAR',
+    csvEscape(hogar.nombre),
+    '', '', '', '', '', '', '', '', '',
+    '', '', '', '', '', '',
+    csvEscape(hogar.tokenInvitacion ?? ''),
+    csvEscape(hogar.createdAt ? format(hogar.createdAt, 'yyyy-MM-dd HH:mm:ss') : ''),
+  ].join(','));
 
   for (const ing of ingresos) {
     rows.push([
@@ -319,9 +333,29 @@ router.get('/hogar/:hogarId/exportar-csv', authMiddleware, asyncHandler(async (r
       csvEscape(Number(ing.monto)),
       csvEscape(ing.tipo),
       csvEscape(ing.fechaInicio ? format(ing.fechaInicio, 'yyyy-MM-dd') : ''),
+      csvEscape(ing.fechaFin ? format(ing.fechaFin, 'yyyy-MM-dd') : ''),
       '',
       csvEscape(ing.usuario?.username ?? ''),
       '', '', '',
+      '', '', '', '',
+      '', '', '',
+      csvEscape(ing.createdAt ? format(ing.createdAt, 'yyyy-MM-dd HH:mm:ss') : ''),
+    ].join(','));
+  }
+
+  for (const t of tarjetas) {
+    rows.push([
+      'TARJETA',
+      csvEscape(t.nombre),
+      '', '', '',
+      '',
+      '',
+      '',
+      '', '', '',
+      '', '', '', '',
+      csvEscape(t.ultimo4),
+      csvEscape(t.diaCierre ?? ''),
+      '', '',
     ].join(','));
   }
 
@@ -332,9 +366,15 @@ router.get('/hogar/:hogarId/exportar-csv', authMiddleware, asyncHandler(async (r
       csvEscape(Number(g.monto)),
       csvEscape(g.tipo),
       csvEscape(g.fechaInicio ? format(g.fechaInicio, 'yyyy-MM-dd') : ''),
+      '',
       csvEscape(g.categoria ? `${g.categoria.icon} ${g.categoria.nombre}` : ''),
       csvEscape(g.usuario?.username ?? ''),
+      csvEscape(g.tarjetaId ? (tarjetaMap.get(g.tarjetaId) ?? '') : ''),
+      csvEscape(g.cuotasTotales ?? ''),
+      csvEscape(g.cuotasPagadas),
+      '', '', '', '',
       '', '', '',
+      csvEscape(g.createdAt ? format(g.createdAt, 'yyyy-MM-dd HH:mm:ss') : ''),
     ].join(','));
   }
 
@@ -342,14 +382,18 @@ router.get('/hogar/:hogarId/exportar-csv', authMiddleware, asyncHandler(async (r
     rows.push([
       'META',
       csvEscape(m.nombre),
-      '',
-      '',
+      '', '', '',
       '',
       '',
       csvEscape(m.usuario?.username ?? ''),
+      '',
+      '', '',
       csvEscape(Number(m.montoObjetivo)),
       csvEscape(Number(m.montoActual)),
       csvEscape(format(m.fechaLimite, 'yyyy-MM-dd')),
+      csvEscape(m.cuotaMensual ? Number(m.cuotaMensual) : ''),
+      '', '', '',
+      csvEscape(m.createdAt ? format(m.createdAt, 'yyyy-MM-dd HH:mm:ss') : ''),
     ].join(','));
   }
 
@@ -373,15 +417,24 @@ router.post('/hogar/:hogarId/importar-csv', authMiddleware, upload.single('archi
   if (lineas.length < 2) throw new AppError(400, 'El CSV está vacío');
 
   const cabeceras = lineas[0].split(',').map(h => h.trim().toLowerCase());
-  const idxTipoMov = cabeceras.indexOf('tipo_movimiento');
-  const idxDesc = cabeceras.indexOf('descripcion');
-  const idxMonto = cabeceras.indexOf('monto');
-  const idxFecha = cabeceras.indexOf('fecha');
-  const idxTipo = cabeceras.indexOf('tipo');
-  const idxCategoria = cabeceras.indexOf('categoria');
-  const idxMontoObj = cabeceras.indexOf('monto_objetivo');
-  const idxMontoAct = cabeceras.indexOf('monto_actual');
-  const idxFechaLim = cabeceras.indexOf('fecha_limite');
+  const idx = (name: string) => cabeceras.indexOf(name);
+
+  const idxTipoMov = idx('tipo_movimiento');
+  const idxDesc = idx('descripcion');
+  const idxMonto = idx('monto');
+  const idxFecha = idx('fecha_inicio') !== -1 ? idx('fecha_inicio') : idx('fecha');
+  const idxFechaFin = idx('fecha_fin');
+  const idxTipo = idx('tipo');
+  const idxCategoria = idx('categoria');
+  const idxTarjeta = idx('tarjeta');
+  const idxCuotasTotales = idx('cuotas_totales');
+  const idxCuotasPagadas = idx('cuotas_pagadas');
+  const idxMontoObj = idx('monto_objetivo');
+  const idxMontoAct = idx('monto_actual');
+  const idxFechaLim = idx('fecha_limite');
+  const idxCuotaMensual = idx('cuota_mensual');
+  const idxUltimo4 = idx('ultimo4');
+  const idxDiaCierre = idx('dia_cierre');
 
   if (idxTipoMov === -1 || idxDesc === -1) {
     throw new AppError(400, 'El CSV debe tener las columnas: tipo_movimiento, descripcion');
@@ -397,7 +450,38 @@ router.post('/hogar/:hogarId/importar-csv', authMiddleware, upload.single('archi
     const montoRaw = (cols[idxMonto] ?? '').trim().replace(/[$,]/g, '');
     const monto = parseFloat(montoRaw);
     const fecha = idxFecha !== -1 ? (cols[idxFecha] ?? '').trim() : '';
+    const fechaFinRaw = idxFechaFin !== -1 ? (cols[idxFechaFin] ?? '').trim() : '';
     const tipo = idxTipo !== -1 ? (cols[idxTipo] ?? '').trim().toUpperCase() : 'PUNTUAL';
+
+    if (tipoMov === 'TARJETA') {
+      if (!descripcion) {
+        errores.push(`Línea ${i + 1}: tarjeta sin nombre`);
+        continue;
+      }
+      const ultimo4 = idxUltimo4 !== -1 ? (cols[idxUltimo4] ?? '').trim() : '';
+      const diaCierreRaw = idxDiaCierre !== -1 ? (cols[idxDiaCierre] ?? '').trim() : '';
+      const diaCierre = parseInt(diaCierreRaw, 10);
+
+      try {
+        const existente = await prisma.tarjetaCredito.findFirst({
+          where: { hogarId, nombre: descripcion },
+        });
+        if (!existente) {
+          await prisma.tarjetaCredito.create({
+            data: {
+              hogarId,
+              nombre: descripcion,
+              ultimo4: ultimo4 || '0000',
+              diaCierre: !isNaN(diaCierre) ? diaCierre : null,
+            },
+          });
+          creados++;
+        }
+      } catch (e) {
+        errores.push(`Línea ${i + 1}: error al crear tarjeta`);
+      }
+      continue;
+    }
 
     if (tipoMov === 'META') {
       const montoObjRaw = idxMontoObj !== -1 ? (cols[idxMontoObj] ?? '').trim().replace(/[$,]/g, '') : '';
@@ -405,6 +489,8 @@ router.post('/hogar/:hogarId/importar-csv', authMiddleware, upload.single('archi
       const montoActRaw = idxMontoAct !== -1 ? (cols[idxMontoAct] ?? '').trim().replace(/[$,]/g, '') : '';
       const montoAct = parseFloat(montoActRaw);
       const fechaLim = idxFechaLim !== -1 ? (cols[idxFechaLim] ?? '').trim() : '';
+      const cuotaMensualRaw = idxCuotaMensual !== -1 ? (cols[idxCuotaMensual] ?? '').trim().replace(/[$,]/g, '') : '';
+      const cuotaMensual = parseFloat(cuotaMensualRaw);
 
       if (!descripcion || isNaN(montoObj) || montoObj <= 0) {
         errores.push(`Línea ${i + 1}: meta sin nombre o monto_objetivo inválido`);
@@ -420,6 +506,7 @@ router.post('/hogar/:hogarId/importar-csv', authMiddleware, upload.single('archi
             montoObjetivo: montoObj,
             montoActual: isNaN(montoAct) || montoAct < 0 ? 0 : montoAct,
             fechaLimite: fechaLim ? new Date(fechaLim) : new Date(),
+            cuotaMensual: isNaN(cuotaMensual) ? null : cuotaMensual,
           },
         });
         creados++;
@@ -435,13 +522,51 @@ router.post('/hogar/:hogarId/importar-csv', authMiddleware, upload.single('archi
     }
 
     if (tipoMov !== 'INGRESO' && tipoMov !== 'GASTO') {
-      errores.push(`Línea ${i + 1}: tipo_movimiento debe ser INGRESO, GASTO o META`);
+      errores.push(`Línea ${i + 1}: tipo_movimiento debe ser INGRESO, GASTO, META o TARJETA`);
       continue;
     }
 
     const tipoValido = ['PUNTUAL', 'RECURRENTE', 'INDEFINIDO'].includes(tipo) ? tipo : 'PUNTUAL';
-
     const fechaInicio = fecha ? new Date(fecha) : undefined;
+    const fechaFin = fechaFinRaw ? new Date(fechaFinRaw) : undefined;
+
+    const cuotasTotalesRaw = idxCuotasTotales !== -1 ? (cols[idxCuotasTotales] ?? '').trim() : '';
+    const cuotasTotales = parseInt(cuotasTotalesRaw, 10);
+    const cuotasPagadasRaw = idxCuotasPagadas !== -1 ? (cols[idxCuotasPagadas] ?? '').trim() : '';
+    const cuotasPagadas = parseInt(cuotasPagadasRaw, 10);
+
+    let tarjetaId: string | undefined;
+
+    if (idxTarjeta !== -1 && tipoMov === 'GASTO') {
+      const tarjetaStr = (cols[idxTarjeta] ?? '').trim();
+      if (tarjetaStr) {
+        const tarjetaExistente = await prisma.tarjetaCredito.findFirst({
+          where: { hogarId, nombre: tarjetaStr.split(' (****')[0] },
+        });
+        if (tarjetaExistente) tarjetaId = tarjetaExistente.id;
+      }
+    }
+
+    let categoriaId: string | undefined;
+
+    if (idxCategoria !== -1 && tipoMov === 'GASTO') {
+      const catStr = (cols[idxCategoria] ?? '').trim();
+      if (catStr) {
+        const spaceIdx = catStr.indexOf(' ');
+        const icon = spaceIdx > 0 ? catStr.substring(0, spaceIdx).trim() : '📂';
+        const nombre = spaceIdx > 0 ? catStr.substring(spaceIdx + 1).trim() : catStr;
+
+        let cat = await prisma.categoria.findFirst({
+          where: { hogarId, nombre },
+        });
+        if (!cat) {
+          cat = await prisma.categoria.create({
+            data: { hogarId, nombre, icon },
+          });
+        }
+        categoriaId = cat.id;
+      }
+    }
 
     try {
       if (tipoMov === 'INGRESO') {
@@ -453,6 +578,7 @@ router.post('/hogar/:hogarId/importar-csv', authMiddleware, upload.single('archi
             monto,
             tipo: tipoValido as 'PUNTUAL' | 'RECURRENTE' | 'INDEFINIDO',
             fechaInicio,
+            fechaFin,
           },
         });
       } else {
@@ -464,6 +590,10 @@ router.post('/hogar/:hogarId/importar-csv', authMiddleware, upload.single('archi
             monto,
             tipo: tipoValido as 'PUNTUAL' | 'RECURRENTE' | 'INDEFINIDO',
             fechaInicio,
+            cuotasTotales: !isNaN(cuotasTotales) && cuotasTotales > 0 ? cuotasTotales : null,
+            cuotasPagadas: !isNaN(cuotasPagadas) && cuotasPagadas >= 0 ? cuotasPagadas : 0,
+            tarjetaId,
+            categoriaId,
           },
         });
       }
@@ -474,6 +604,199 @@ router.post('/hogar/:hogarId/importar-csv', authMiddleware, upload.single('archi
   }
 
   res.json({ mensaje: `Se importaron ${creados} movimientos${errores.length ? ` (${errores.length} errores)` : ''}`, errores: errores.length ? errores : undefined });
+}));
+
+router.post('/restaurar-csv', authMiddleware, upload.single('archivo'), asyncHandler(async (req: AuthRequest, res) => {
+  if (!req.file) throw new AppError(400, 'Debes subir un archivo CSV');
+
+  const contenido = req.file.buffer.toString('utf-8').replace(/^\uFEFF/, '');
+  const lineas = contenido.split('\n').map(l => l.trim()).filter(Boolean);
+
+  if (lineas.length < 2) throw new AppError(400, 'El CSV está vacío');
+
+  const cabeceras = lineas[0].split(',').map(h => h.trim().toLowerCase());
+  const idx = (name: string) => cabeceras.indexOf(name);
+
+  const idxTipoMov = idx('tipo_movimiento');
+  const idxDesc = idx('descripcion');
+  const idxMonto = idx('monto');
+  const idxFecha = idx('fecha_inicio') !== -1 ? idx('fecha_inicio') : idx('fecha');
+  const idxFechaFin = idx('fecha_fin');
+  const idxTipo = idx('tipo');
+  const idxCategoria = idx('categoria');
+  const idxTarjeta = idx('tarjeta');
+  const idxCuotasTotales = idx('cuotas_totales');
+  const idxCuotasPagadas = idx('cuotas_pagadas');
+  const idxMontoObj = idx('monto_objetivo');
+  const idxMontoAct = idx('monto_actual');
+  const idxFechaLim = idx('fecha_limite');
+  const idxCuotaMensual = idx('cuota_mensual');
+  const idxUltimo4 = idx('ultimo4');
+  const idxDiaCierre = idx('dia_cierre');
+  const idxTokenInvitacion = idx('token_invitacion');
+
+  if (idxTipoMov === -1 || idxDesc === -1) {
+    throw new AppError(400, 'El CSV debe tener las columnas: tipo_movimiento, descripcion');
+  }
+
+  let hogarId: string | null = null;
+  const errores: string[] = [];
+
+  // First pass: find HOGAR row and create/get hogar
+  for (let i = 1; i < lineas.length; i++) {
+    const cols = csvParseLine(lineas[i]);
+    const tipoMov = (cols[idxTipoMov] ?? '').trim().toUpperCase();
+    if (tipoMov !== 'HOGAR') continue;
+
+    const nombre = (cols[idxDesc] ?? '').trim();
+    if (!nombre) { errores.push(`Línea ${i + 1}: hogar sin nombre`); break; }
+
+    const tokenRaw = idxTokenInvitacion !== -1 ? (cols[idxTokenInvitacion] ?? '').trim() : '';
+
+    let hogar = await prisma.hogar.findFirst({
+      where: { nombre, miembros: { some: { usuarioId: req.usuarioId! } } },
+    });
+
+    if (!hogar) {
+      hogar = await prisma.hogar.create({
+        data: {
+          nombre,
+          tokenInvitacion: tokenRaw || undefined,
+          miembros: {
+            create: { usuarioId: req.usuarioId!, rol: 'ADMIN' },
+          },
+        },
+      });
+    } else {
+      const soyAdmin = await prisma.miembroHogar.findFirst({
+        where: { hogarId: hogar.id, usuarioId: req.usuarioId!, rol: 'ADMIN' },
+      });
+      if (!soyAdmin) {
+        await prisma.miembroHogar.upsert({
+          where: { usuarioId_hogarId: { usuarioId: req.usuarioId!, hogarId: hogar.id } },
+          update: { rol: 'ADMIN' },
+          create: { usuarioId: req.usuarioId!, hogarId: hogar.id, rol: 'ADMIN' },
+        });
+      }
+    }
+
+    hogarId = hogar.id;
+    break;
+  }
+
+  if (!hogarId) {
+    // No HOGAR row found; create a default hogar
+    const hogar = await prisma.hogar.create({
+      data: {
+        nombre: 'Mi Hogar',
+        miembros: { create: { usuarioId: req.usuarioId!, rol: 'ADMIN' } },
+      },
+    });
+    hogarId = hogar.id;
+  }
+
+  let creados = 0;
+
+  // Second pass: import all data
+  for (let i = 1; i < lineas.length; i++) {
+    const cols = csvParseLine(lineas[i]);
+    const tipoMov = (cols[idxTipoMov] ?? '').trim().toUpperCase();
+    const descripcion = (cols[idxDesc] ?? '').trim();
+
+    if (tipoMov === 'HOGAR') continue;
+
+    if (tipoMov === 'TARJETA') {
+      if (!descripcion) { errores.push(`Línea ${i + 1}: tarjeta sin nombre`); continue; }
+      const ultimo4 = idxUltimo4 !== -1 ? (cols[idxUltimo4] ?? '').trim() : '';
+      const diaCierreRaw = idxDiaCierre !== -1 ? (cols[idxDiaCierre] ?? '').trim() : '';
+      const diaCierre = parseInt(diaCierreRaw, 10);
+      try {
+        const existente = await prisma.tarjetaCredito.findFirst({
+          where: { hogarId, nombre: descripcion },
+        });
+        if (!existente) {
+          await prisma.tarjetaCredito.create({
+            data: { hogarId, nombre: descripcion, ultimo4: ultimo4 || '0000', diaCierre: !isNaN(diaCierre) ? diaCierre : null },
+          });
+          creados++;
+        }
+      } catch { errores.push(`Línea ${i + 1}: error al crear tarjeta`); }
+      continue;
+    }
+
+    if (tipoMov === 'META') {
+      const montoObjRaw = idxMontoObj !== -1 ? (cols[idxMontoObj] ?? '').trim().replace(/[$,]/g, '') : '';
+      const montoObj = parseFloat(montoObjRaw);
+      const montoActRaw = idxMontoAct !== -1 ? (cols[idxMontoAct] ?? '').trim().replace(/[$,]/g, '') : '';
+      const montoAct = parseFloat(montoActRaw);
+      const fechaLim = idxFechaLim !== -1 ? (cols[idxFechaLim] ?? '').trim() : '';
+      const cuotaMensualRaw = idxCuotaMensual !== -1 ? (cols[idxCuotaMensual] ?? '').trim().replace(/[$,]/g, '') : '';
+      const cuotaMensual = parseFloat(cuotaMensualRaw);
+      if (!descripcion || isNaN(montoObj) || montoObj <= 0) { errores.push(`Línea ${i + 1}: meta sin nombre o monto_objetivo inválido`); continue; }
+      try {
+        await prisma.meta.create({
+          data: { hogarId, usuarioId: req.usuarioId!, nombre: descripcion, montoObjetivo: montoObj, montoActual: isNaN(montoAct) || montoAct < 0 ? 0 : montoAct, fechaLimite: fechaLim ? new Date(fechaLim) : new Date(), cuotaMensual: isNaN(cuotaMensual) ? null : cuotaMensual },
+        });
+        creados++;
+      } catch { errores.push(`Línea ${i + 1}: error al crear meta`); }
+      continue;
+    }
+
+    const montoRaw = (cols[idxMonto] ?? '').trim().replace(/[$,]/g, '');
+    const monto = parseFloat(montoRaw);
+    if (idxMonto === -1 || !descripcion || isNaN(monto) || monto <= 0) { errores.push(`Línea ${i + 1}: descripción o monto inválido`); continue; }
+    if (tipoMov !== 'INGRESO' && tipoMov !== 'GASTO') { errores.push(`Línea ${i + 1}: tipo_movimiento inválido`); continue; }
+
+    const tipo = idxTipo !== -1 ? (cols[idxTipo] ?? '').trim().toUpperCase() : 'PUNTUAL';
+    const tipoValido = ['PUNTUAL', 'RECURRENTE', 'INDEFINIDO'].includes(tipo) ? tipo : 'PUNTUAL';
+    const fecha = idxFecha !== -1 ? (cols[idxFecha] ?? '').trim() : '';
+    const fechaFinRaw = idxFechaFin !== -1 ? (cols[idxFechaFin] ?? '').trim() : '';
+    const fechaInicio = fecha ? new Date(fecha) : undefined;
+    const fechaFin = fechaFinRaw ? new Date(fechaFinRaw) : undefined;
+    const cuotasTotalesRaw = idxCuotasTotales !== -1 ? (cols[idxCuotasTotales] ?? '').trim() : '';
+    const cuotasTotales = parseInt(cuotasTotalesRaw, 10);
+    const cuotasPagadasRaw = idxCuotasPagadas !== -1 ? (cols[idxCuotasPagadas] ?? '').trim() : '';
+    const cuotasPagadas = parseInt(cuotasPagadasRaw, 10);
+
+    let tarjetaId: string | undefined;
+    if (idxTarjeta !== -1 && tipoMov === 'GASTO') {
+      const tarjetaStr = (cols[idxTarjeta] ?? '').trim();
+      if (tarjetaStr) {
+        const t = await prisma.tarjetaCredito.findFirst({ where: { hogarId, nombre: tarjetaStr.split(' (****')[0] } });
+        if (t) tarjetaId = t.id;
+      }
+    }
+
+    let categoriaId: string | undefined;
+    if (idxCategoria !== -1 && tipoMov === 'GASTO') {
+      const catStr = (cols[idxCategoria] ?? '').trim();
+      if (catStr) {
+        const spaceIdx = catStr.indexOf(' ');
+        const icon = spaceIdx > 0 ? catStr.substring(0, spaceIdx).trim() : '📂';
+        const nombre = spaceIdx > 0 ? catStr.substring(spaceIdx + 1).trim() : catStr;
+        let cat = await prisma.categoria.findFirst({ where: { hogarId, nombre } });
+        if (!cat) {
+          cat = await prisma.categoria.create({ data: { hogarId, nombre, icon } });
+        }
+        categoriaId = cat.id;
+      }
+    }
+
+    try {
+      if (tipoMov === 'INGRESO') {
+        await prisma.ingreso.create({
+          data: { hogarId, usuarioId: req.usuarioId!, descripcion, monto, tipo: tipoValido as 'PUNTUAL' | 'RECURRENTE' | 'INDEFINIDO', fechaInicio, fechaFin },
+        });
+      } else {
+        await prisma.gasto.create({
+          data: { hogarId, usuarioId: req.usuarioId!, descripcion, monto, tipo: tipoValido as 'PUNTUAL' | 'RECURRENTE' | 'INDEFINIDO', fechaInicio, cuotasTotales: !isNaN(cuotasTotales) && cuotasTotales > 0 ? cuotasTotales : null, cuotasPagadas: !isNaN(cuotasPagadas) && cuotasPagadas >= 0 ? cuotasPagadas : 0, tarjetaId, categoriaId },
+        });
+      }
+      creados++;
+    } catch { errores.push(`Línea ${i + 1}: error al crear`); }
+  }
+
+  res.json({ mensaje: `Hogar restaurado con ${creados} registros${errores.length ? ` (${errores.length} errores)` : ''}`, errores: errores.length ? errores : undefined });
 }));
 
 export default router;
